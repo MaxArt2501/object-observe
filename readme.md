@@ -1,7 +1,7 @@
 Object.observe polyfill
 =======================
 
-`Object.observe` is one very nice [EcmaScript 7 feature](https://github.com/arv/ecmascript-object-observe) that has landed on Blink-based browsers (Chrome 36+, Opera 23+) in the [first part of 2014](http://www.html5rocks.com/en/tutorials/es7/observe/). Node.js delivers it too in version 0.11.x.
+`Object.observe` is a very nice [EcmaScript 7 feature](https://github.com/arv/ecmascript-object-observe) that has landed on Blink-based browsers (Chrome 36+, Opera 23+) in the [first part of 2014](http://www.html5rocks.com/en/tutorials/es7/observe/). Node.js delivers it too in version 0.11.x.
 
 In short, it's one of the things web developers wish they had 10-15 years ago: it notifies the application of any changes made to an object, like adding, deleting or updating a property, changing its descriptor and so on. It even supports custom events. Sweet!
 
@@ -69,7 +69,7 @@ So, yeah, dirty checking. `setTimeout(..., 17)`. I know, it sounds lame, but now
 
 On a side note, it's better not using `setImmediate` (supported by node.js and IE 10+) because it clogs the CPU with continuous computations. Doing a check at 60 fps at best should be enough for most cases.
 
-## Limitations
+## Limitations and caveats
 
 * Because properties are polled, when more than one change is made synchronously to the same property, it won't get caught. This means that this won't notify any event:
 
@@ -84,6 +84,23 @@ On a side note, it's better not using `setImmediate` (supported by node.js and I
   ```
   
   `Object.prototype.watch` could help in this case, but it would be a partial solution.
+
+* Property changes may not be reported in the correct order. The polyfill performs the checks in order:
+
+  1. `"add"` and `"update"`
+  2. `"delete"`
+  3. `"preventExtensions"`
+  
+  This means that the `"add"` change is listed *before* the `"delete"` in the following snippet:
+  
+  ```js
+  var obj = { foo: "bar" };
+  Object.observe(foo, ...);
+  delete obj.foo;
+  obj.bar = "foo";
+  ```
+  
+  Due to the nature of the shim, there's nothing that can be done about it.
 
 * When a property is created used `Object.defineProperty` and set to not enumerable, it's basically invisible to the polyfill:
 
@@ -103,7 +120,9 @@ On a side note, it's better not using `setImmediate` (supported by node.js and I
 
 * It doesn't work correctly on DOM nodes or other *host* objects. Nodes have a lot of enumerable properties that `Object.observe` should *not* check.
 
-* Finally, dirty checking can be intensive. Memory occupation can grow to undesirable levels, not to mention CPU load. Pay attention to the number of objects your application needs to observe, and consider whether a polyfill is actually good for you.
+* **Possible memory leaks**: remember to `unobserve` the objects you want to be garbage collected. This can be avoided with native implementations of `Object.observe`, but due to the fact that in this polyfill observed objects are held in internal [maps](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map), they can't be GC'ed until they're unobserved. ([`WeakMap`s](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap) could solve this particular issue, but of course they're not for every environment - a shim for `Map` is used when not supported - and it's also not possible to iterate through their entries.)
+
+* Dirty checking can be intensive. Memory occupation can grow to undesirable levels, not to mention CPU load. Pay attention to the number of objects your application needs to observe, and consider whether a polyfill is actually good for you.
 
 ## What's provided
 
@@ -136,11 +155,10 @@ This polyfill has been tested (and is working) in the following environments:
 
 ## To do
 
-* `Array.observe` and `Array.unobserve` - they're pretty much doable, I just have to figure out the best way to support them;
+* `Array.observe` and `Array.unobserve` - they're pretty much doable, I just have to figure out the best way to support them - it looks like the `"splice"` event must be internally supported too;
 * consider and eventually deliver support for `reconfigure` and `setPrototype` events, maybe creating a "full" and a "light" version of the polyfill;
 * some deeper considerations about whether using `Object.prototype.watch` or not;
 * support for DOM nodes;
-* consider taking advantage of `Map` whenever possible;
 * code tests, documentation, optimization and cleanup.
 
 ## License
