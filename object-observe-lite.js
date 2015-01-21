@@ -15,11 +15,7 @@
  * @property {Map<Handler, HandlerData>}  handlers
  * @property {String[]}                   properties
  * @property {*[]}                        values
- * @property {Descriptor[]}               descriptors
  * @property {Notifier}                   notifier
- * @property {Boolean}                    frozen
- * @property {Boolean}                    extensible
- * @property {Object}                     proto
  */
 /**
  * Function definition of a handler
@@ -191,25 +187,6 @@ Object.observe || (function(O, A, root) {
         },
 
         /**
-         * Return the prototype of the object... if defined.
-         * @function getPrototype
-         * @param {Object} object
-         * @returns {Object}
-         */
-        getPrototype = O.getPrototypeOf || null,
-
-        /**
-         * Return the descriptor of the object... if defined.
-         * IE8 supports a (useless) Object.getOwnPropertyDescriptor for DOM
-         * nodes only, so defineProperties is checked instead.
-         * @function getDescriptor
-         * @param {Object} object
-         * @param {String} property
-         * @returns {Descriptor}
-         */
-        getDescriptor = O.defineProperties ? O.getOwnPropertyDescriptor : null,
-
-        /**
          * Polyfill for Object.is if not available
          * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is
          * @function areSame
@@ -240,9 +217,6 @@ Object.observe || (function(O, A, root) {
             else {
                 observed.set(object, data = {
                     handlers: createMap(),
-                    frozen: O.isFrozen ? O.isFrozen(object) : false,
-                    extensible: O.isExtensible ? O.isExtensible(object) : true,
-                    proto: getPrototype && getPrototype(object),
                     properties: isNode(object) ? [] : getKeys(object)
                 });
                 data.handlers.set(handler,
@@ -272,14 +246,8 @@ Object.observe || (function(O, A, root) {
         updateValues = function(object, data) {
             var props = data.properties,
                 values = data.values = [],
-                i = 0, descs;
-            if (getDescriptor) {
-                descs = data.descriptors = [];
-                while (i < props.length) {
-                    descs[i] = getDescriptor(object, props[i]);
-                    values[i] = object[props[i++]];
-                }
-            } else while (i < props.length)
+                i = 0;
+            while (i < props.length)
                 values[i] = object[props[i++]];
         },
 
@@ -291,194 +259,65 @@ Object.observe || (function(O, A, root) {
          * @param {String} [except]  Doesn't deliver the changes to the
          *                           handlers that accept this type
          */
-        performPropertyChecks = (function() {
-            var updateCheck = getDescriptor ? function(object, data, idx, except, descr) {
-                var key = data.properties[idx],
-                    value = object[key],
-                    ovalue = data.values[idx],
-                    odesc = data.descriptors[idx];
+        performPropertyChecks = function(object, data, except) {
+            if (!data.handlers.size) return;
 
-                if ("value" in descr && (ovalue === value
-                        ? ovalue === 0 && 1/ovalue !== 1/value 
-                        : ovalue === ovalue || value === value)) {
-                    addChangeRecord(data, {
-                        name: key,
-                        type: "update",
-                        object: object,
-                        oldValue: ovalue
-                    }, except);
-                    data.values[idx] = value;
-                }
-                if (odesc.configurable && (!descr.configurable
-                        || descr.writable !== odesc.writable
-                        || descr.enumerable !== odesc.enumerable
-                        || descr.get !== odesc.get
-                        || descr.set !== odesc.set)) {
-                    addChangeRecord(data, {
-                        name: key,
-                        type: "reconfigure",
-                        object: object,
-                        oldValue: ovalue
-                    }, except);
-                    data.descriptors[idx] = descr;
-                }
-            } : function(object, data, idx, except) {
-                var key = data.properties[idx],
-                    value = object[key],
-                    ovalue = data.values[idx];
+            var props, proplen, keys,
+                values = data.values,
+                descs = data.descriptors,
+                i = 0, idx,
+                key, value, ovalue,
+                proto, descr;
 
-                if (ovalue === value ? ovalue === 0 && 1/ovalue !== 1/value 
-                        : ovalue === ovalue || value === value) {
+            props = data.properties.slice();
+            proplen = props.length;
+            keys = getKeys(object);
+
+            // Check for value additions/changes
+            while (i < keys.length) {
+                key = keys[i++];
+                idx = inArray(key, props);
+                value = object[key];
+
+                if (idx === -1) {
                     addChangeRecord(data, {
                         name: key,
-                        type: "update",
-                        object: object,
-                        oldValue: ovalue
+                        type: "add",
+                        object: object
                     }, except);
-                    data.values[idx] = value;
+                    data.properties.push(key);
+                    values.push(value);
+                } else {
+                    ovalue = values[idx];
+                    props[idx] = null;
+                    proplen--;
+                    if (ovalue === value ? ovalue === 0 && 1/ovalue !== 1/value 
+                            : ovalue === ovalue || value === value) {
+                        addChangeRecord(data, {
+                            name: key,
+                            type: "update",
+                            object: object,
+                            oldValue: ovalue
+                        }, except);
+                        data.values[idx] = value;
+                    }
                 }
-            };
+            }
 
             // Checks if some property has been deleted
-            var deletionCheck = getDescriptor ? function(object, props, proplen, data, except) {
-                var i = props.length, descr;
-                while (proplen && i--) {
-                    if (props[i] !== null) {
-                        descr = getDescriptor(object, props[i]);
-                        proplen--;
-
-                        // If there's no descriptor, the property has really
-                        // been deleted; otherwise, it's been reconfigured so
-                        // that's not enumerable anymore
-                        if (descr) updateCheck(object, data, i, except, descr);
-                        else {
-                            addChangeRecord(data, {
-                                name: props[i],
-                                type: "delete",
-                                object: object,
-                                oldValue: data.values[i]
-                            }, except);
-                            data.properties.splice(i, 1);
-                            data.values.splice(i, 1);
-                            data.descriptors.splice(i, 1);
-                        }
-                    }
+            for (i = props.length; proplen && i--;)
+                if (props[i] !== null) {
+                    addChangeRecord(data, {
+                        name: props[i],
+                        type: "delete",
+                        object: object,
+                        oldValue: values[i]
+                    }, except);
+                    data.properties.splice(i, 1);
+                    data.values.splice(i, 1);
+                    proplen--;
                 }
-            } : function(object, props, proplen, data, except) {
-                var i = props.length;
-                while (proplen && i--)
-                    if (props[i] !== null) {
-                        addChangeRecord(data, {
-                            name: props[i],
-                            type: "delete",
-                            object: object,
-                            oldValue: data.values[i]
-                        }, except);
-                        data.properties.splice(i, 1);
-                        data.values.splice(i, 1);
-                        proplen--;
-                    }
-            };
-
-            return function(object, data, except) {
-                if (!data.handlers.size || data.frozen) return;
-
-                var props, proplen, keys,
-                    values = data.values,
-                    descs = data.descriptors,
-                    i = 0, idx,
-                    key, value,
-                    proto, descr;
-
-                // If the object isn't extensible, we don't need to check for new
-                // or deleted properties
-                if (data.extensible) {
-
-                    props = data.properties.slice();
-                    proplen = props.length;
-                    keys = getKeys(object);
-
-                    if (descs) {
-                        while (i < keys.length) {
-                            key = keys[i++];
-                            idx = inArray(key, props);
-                            descr = getDescriptor(object, key);
-
-                            if (idx === -1) {
-                                addChangeRecord(data, {
-                                    name: key,
-                                    type: "add",
-                                    object: object
-                                }, except);
-                                data.properties.push(key);
-                                values.push(object[key]);
-                                descs.push(descr);
-                            } else {
-                                props[idx] = null;
-                                proplen--;
-                                updateCheck(object, data, idx, except, descr);
-                            }
-                        }
-                        deletionCheck(object, props, proplen, data, except);
-
-                        if (!O.isExtensible(object)) {
-                            data.extensible = false;
-                            addChangeRecord(data, {
-                                type: "preventExtensions",
-                                object: object
-                            }, except);
-
-                            data.frozen = O.isFrozen(object);
-                        }
-                    } else {
-                        while (i < keys.length) {
-                            key = keys[i++];
-                            idx = inArray(key, props);
-                            value = object[key];
-
-                            if (idx === -1) {
-                                addChangeRecord(data, {
-                                    name: key,
-                                    type: "add",
-                                    object: object
-                                }, except);
-                                data.properties.push(key);
-                                values.push(value);
-                            } else {
-                                props[idx] = null;
-                                proplen--;
-                                updateCheck(object, data, idx, except);
-                            }
-                        }
-                        deletionCheck(object, props, proplen, data, except);
-                    }
-
-                } else if (!data.frozen) {
-
-                    // If the object is not extensible, but not frozen, we just have
-                    // to check for value changes
-                    for (; i < props.length; i++) {
-                        key = props[i];
-                        updateCheck(object, data, i, except, getDescriptor(object, key));
-                    }
-
-                    if (O.isFrozen(object))
-                        data.frozen = true;
-                }
-
-                if (getPrototype) {
-                    proto = getPrototype(object);
-                    if (proto !== data.proto) {
-                        addChangeRecord(data, {
-                            type: "setPrototype",
-                            name: "__proto__",
-                            oldValue: data.proto
-                        });
-                        data.proto = proto;
-                    }
-                }
-            };
-        })(),
+        },
 
         /**
          * Calls the handlers with their relative change records

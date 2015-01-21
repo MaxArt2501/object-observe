@@ -1,3 +1,12 @@
+## v0.1.2
+
+2015-01-21
+
+* Support for `"reconfigure"` and `"setPrototype"` events
+* New "light" version of the polyfill
+* Various bugfixes
+* Fixed links for specs
+
 ## v0.1.1
 
 2015-01-19

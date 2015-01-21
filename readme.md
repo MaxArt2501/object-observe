@@ -1,13 +1,19 @@
 Object.observe polyfill
 =======================
 
-`Object.observe` is a very nice [EcmaScript 7 feature](https://github.com/arv/ecmascript-object-observe) that has landed on Blink-based browsers (Chrome 36+, Opera 23+) in the [first part of 2014](http://www.html5rocks.com/en/tutorials/es7/observe/). Node.js delivers it too in version 0.11.x.
+`Object.observe` is a very nice [EcmaScript 7 feature](http://arv.github.io/ecmascript-object-observe/) that has landed on Blink-based browsers (Chrome 36+, Opera 23+) in the [first part of 2014](http://www.html5rocks.com/en/tutorials/es7/observe/). Node.js delivers it too in version 0.11.x.
 
 In short, it's one of the things web developers wish they had 10-15 years ago: it notifies the application of any changes made to an object, like adding, deleting or updating a property, changing its descriptor and so on. It even supports custom events. Sweet!
 
 The problem is that most browsers still doesn't support `Object.observe`. While technically it's *impossible* to perfectly replicate the feature's behaviour, something useful can be done keeping the same API.
 
 After giving a look at other polyfills, like [jdarling's](https://github.com/jdarling/Object.observe) and [joelgriffith's](https://github.com/joelgriffith/object-observe-es5), and taking inspiration from them, I decided to write one myself trying to be more adherent to the specifications.
+
+## Which version?
+
+The polyfill comes in two flavours: a "full" and a "light" version. The "full" version aims to be 100% spec compliant, and fully supports all the native observable events. The "light" version, instead, only supports `"add"`, `"update"` and `"delete"`, and ditches most of the checks about properties, but it could be used in most cases where data binding is based on plain objects.
+
+If you don't need to check for `"reconfigure"`, `"preventExtensions"` and `"setPrototype"` events, and you are confident that your observed objects don't have to do with accessor properties or changes in their descriptors, then go for the light version, which should perform reasonably better on older and/old slower environments.
 
 ## Installation
 
@@ -24,6 +30,8 @@ require("object-observe.js");
 ```
 
 That's it. If the environment doesn't already support `Object.observe`, the shim is installed and ready to use.
+
+If you only need the "light" version of the polyfill, replace `object-observe.js` with `object-observe-lite.js`. You can also use the minified versions of the same files (replacing `.js` with `.min.js`).
 
 ## Under the hood
 
@@ -85,11 +93,12 @@ On a side note, it's better not using `setImmediate` (supported by node.js and I
   
   `Object.prototype.watch` could help in this case, but it would be a partial solution.
 
-* Property changes may not be reported in the correct order. The polyfill performs the checks in order:
+* Property changes may not be reported in the correct order. The polyfill performs the checks - and issues the notifications - in this order:
 
-  1. `"add"` and `"update"`
-  2. `"delete"`
+  1. `"add"` and `"update"`, or `"reconfigure"`
+  2. `"delete"` or `"reconfigure"`
   3. `"preventExtensions"`
+  4. `"setPrototype"`
   
   This means that the `"add"` change is listed *before* the `"delete"` in the following snippet:
   
@@ -102,7 +111,7 @@ On a side note, it's better not using `setImmediate` (supported by node.js and I
   
   Due to the nature of the shim, there's nothing that can be done about it.
 
-* When a property is created used `Object.defineProperty` and set to not enumerable, it's basically invisible to the polyfill:
+* When a property is created using `Object.defineProperty` and set to not enumerable, it's basically invisible to the polyfill:
 
   ```js
   Object.defineProperty(object, "bar", {
@@ -155,11 +164,23 @@ This polyfill has been tested (and is working) in the following environments:
 
 ## To do
 
-* `Array.observe` and `Array.unobserve` - they're pretty much doable, I just have to figure out the best way to support them - it looks like the `"splice"` event must be internally supported too;
-* consider and eventually deliver support for `reconfigure` and `setPrototype` events, maybe creating a "full" and a "light" version of the polyfill;
-* some deeper considerations about whether using `Object.prototype.watch` or not;
+* Some deeper considerations about whether using `Object.prototype.watch` or not;
 * support for DOM nodes;
 * code tests, documentation, optimization and cleanup.
+
+### `Array.observe`
+
+The [spec](http://arv.github.io/ecmascript-object-observe/#Array.observe) only states that `Array.observe` is just like `Object.observe` with a fixed accept list of `["add", "update", "delete", "splice"]`, and `Array.unobserve` is equivalent to `Object.unobserve`. That's fine, but where does that `"splice"` event come from?
+
+It's actually triggered by any operation on the array that *may* change the length of the array itself, like `push()` or `splice()`. These operations internally call `notifier.performChange("splice", ...)`, so one solution would be wrapping these methods in `Array.prototype` - or maybe better in the observed array itself - in a `performChange` call. Unfortunately, besides the obvious performance hit, a `"splice"` notification is triggered by this operation too:
+
+```js
+var fibonacci = [ 0, 1, 1, 2, 3 ];
+Array.observe(fibonacci, ...);
+fibonacci[5] = 5;
+```
+
+There's no way to trap this, and forcing developers to only use `Array.prototype` methods leaves me unsure. So, still have to figure out what to do.
 
 ## License
 
