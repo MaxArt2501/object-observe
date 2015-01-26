@@ -139,7 +139,7 @@ The checks are performed using `requestAnimationFrame`, with a fallback to `setT
 
 Well, I couldn't call this an `Object.observe` polyfill without these ones.
 
-It "correctly" (considering the above limitations) supports the `"add"`, `"update"`, `"delete"` and `"preventExtensions"` events. Some work has to be done to support `"reconfigure"` and `"setPrototype"`, but not before some tests and considerations on the performances and memory load that it would involve.
+It "correctly" (considering the above limitations) supports the `"add"`, `"update"`, `"delete"`, `"preventExtensions"`, `"reconfigure"` and `"setPrototype"`.
 
 Type filtering works too when an array is passed as the third argument of `Object.observe`. Handlers don't get called if the change's type is not included in their list.
 
