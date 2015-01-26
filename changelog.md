@@ -1,3 +1,12 @@
+## v0.2.0
+
+2015-01-26
+
+* Code refactoring for correct event grouping
+* Checks performed on a global loop with `requestAnimationFrame` (or a polyfilled version)
+* Unused code cleanup
+* Added some [mocha](http://mochajs.org/) tests
+
 ## v0.1.2
 
 2015-01-21

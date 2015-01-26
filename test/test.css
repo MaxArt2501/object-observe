@@ -1,0 +1,30 @@
+body { font-family: Arial, Helvetica, sans-serif; }
+.outcome-box {
+    border: 1px solid;
+    padding: .5em;
+    margin: .5em;
+    background-color: #ccc;
+}
+.outcome-header {
+    display: block;
+    font-size: 120%;
+    font-weight: bold;
+}
+.result-success {
+    background-color: #8f8;
+    color: green;
+}
+.result-fail {
+    background-color: #fbb;
+    color: #800;
+}
+.outcome-box > .outcome-normal {
+    color: gray;
+    color: rgba(0, 0, 0, .4);
+    font-style: italic;
+    border-bottom: 1px solid;
+    margin-bottom: .25em;
+}
+.outcome-success, .outcome-fail {
+    font-family: "Courier New", Courier, Monospace;
+}

@@ -1,7 +1,7 @@
 Object.observe polyfill
 =======================
 
-`Object.observe` is a very nice [EcmaScript 7 feature](http://arv.github.io/ecmascript-object-observe/) that has landed on Blink-based browsers (Chrome 36+, Opera 23+) in the [first part of 2014](http://www.html5rocks.com/en/tutorials/es7/observe/). Node.js delivers it too in version 0.11.x.
+`Object.observe` is a very nice [EcmaScript 7 feature](http://arv.github.io/ecmascript-object-observe/) that has landed on Blink-based browsers (Chrome 36+, Opera 23+) in the [first part of 2014](http://www.html5rocks.com/en/tutorials/es7/observe/). [Node.js](https://nodejs.org/) delivers it too in version 0.11.x, and it's supported by [io.js](https://iojs.org/) since its first public release.
 
 In short, it's one of the things web developers wish they had 10-15 years ago: it notifies the application of any changes made to an object, like adding, deleting or updating a property, changing its descriptor and so on. It even supports custom events. Sweet!
 
@@ -39,7 +39,7 @@ Your intuition may have led you to think that this polyfill is based on polling 
 
 Even Gecko's [`Object.prototype.watch`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/watch) is probably not worth the effort. First of all, it just checks for updates to the value of a *single* property (or recreating the property after it's been deleted), which may save some work, but not much really. Furthermore, you can't watch a property with two different handlers, meaning that performing `watch` on the same property *replaces* the previous handler.
 
-Regarding value changes, changing the property descriptors with `Object.defineProperty` has similar issues. Moreover, it makes everything slower - if not *much* slower - when it comes to accessing the property. It would also prevent future implementations of the `"reconfigure"` event.
+Regarding value changes, changing the property descriptors with `Object.defineProperty` has similar issues. Moreover, it makes everything slower - if not *much* slower - when it comes to accessing the property. It would also prevent a correct handling of the `"reconfigure"` event.
 
 And of course, Internet Explorer's legacy [`propertychange` event](http://msdn.microsoft.com/en-us/library/ms536956%28VS.85%29.aspx) isn't very useful either, as it works only on DOM elements, it's not fired on property deletion, and... well, let's get rid of it already, shall we?
 
@@ -73,9 +73,9 @@ proxy.foo = "bar";
 console.log(object.foo); // => "BAR"
 ```
 
-So, yeah, dirty checking. `setTimeout(..., 17)`. I know, it sounds lame, but now you know why I had to resolve to this.
+So, yeah, dirty checking. It sounds lame, but now you know why I had to resolve to this.
 
-On a side note, it's better not using `setImmediate` (supported by node.js and IE 10+) because it clogs the CPU with continuous computations. Doing a check at 60 fps at best should be enough for most cases.
+The checks are performed using `requestAnimationFrame`, with a fallback to `setTimeout(..., 17)` when it's not available.
 
 ## Limitations and caveats
 

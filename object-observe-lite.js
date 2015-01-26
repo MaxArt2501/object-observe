@@ -1,5 +1,5 @@
 /*!
- * Object.observe polyfill
+ * Object.observe "lite" polyfill - v0.2.0
  * by Massimo Artizzu (MaxArt2501)
  * 
  * https://github.com/MaxArt2501/object-observe
@@ -20,15 +20,20 @@
 /**
  * Function definition of a handler
  * @callback Handler
- * @param {ChangeRecord[]} changes
+ * @param {ChangeRecord[]}                changes
 */
 /**
  * This represents the data relative to an observed object and one of its
  * handlers
  * @typedef  {Object}                     HandlerData
- * @property {String[]}                   acceptList
+ * @property {Map<Object, ObservedData>}  observed
  * @property {ChangeRecord[]}             changeRecords
  */
+/**
+ * @typedef  {Object}                     ObservedData
+ * @property {String[]}                   acceptList
+ * @property {ObjectData}                 data
+*/
 /**
  * Type definition for a change. Any other property can be added using
  * the notify() or performChange() methods of the notifier.
@@ -67,8 +72,7 @@ Object.observe || (function(O, A, root) {
          */
         handlers,
 
-        defaultObjectAccepts = [ "add", "update", "delete", "reconfigure", "setPrototype", "preventExtensions" ],
-        defaultArrayAccepts = [ "add", "update", "delete", "splice" ];
+        defaultAcceptList = [ "add", "update", "delete", "reconfigure", "setPrototype", "preventExtensions" ];
 
     // Functions for internal usage
 
@@ -97,18 +101,6 @@ Object.observe || (function(O, A, root) {
         isArray = A.isArray || (function(toString) {
             return function (object) { return toString.call(object) === "[object Array]"; };
         })(O.prototype.toString),
-
-        /**
-         * Checks is a property of an object is actually an accessor
-         * @function isAccessor
-         * @param {Object} object
-         * @param {String} prop
-         * @returns {Boolean}
-         */
-        isAccessor = O.defineProperties ? function(object, prop) {
-            var desc = O.getOwnPropertyDescriptor(object, prop);
-            return desc ? "get" in desc || "set" in desc : false;
-        } : function() { return false; },
 
         /**
          * Returns the index of an item in a collection, or -1 if not found.
@@ -187,18 +179,22 @@ Object.observe || (function(O, A, root) {
         },
 
         /**
-         * Polyfill for Object.is if not available
-         * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is
-         * @function areSame
-         * @param {*} x
-         * @param {*} y
-         * @returns {Boolean}
+         * Sets up the next check and delivering iteration, using
+         * requestAnimationFrame or a (close) polyfill.
+         * @function nextFrame
+         * @param {function} func
+         * @returns {number}
          */
-        areSame = O.is || function(x, y) {
-            if (x === y)
-                return x !== 0 || 1/x === 1/y;
-            return x !== x && y !== y;
-        },
+        nextFrame = root.requestAnimationFrame || root.webkitRequestAnimationFrame || (function() {
+            var initial = +new Date,
+                last = initial;
+            return function(func) {
+                var now = +new Date;
+                return setTimeout(function() {
+                    func((last = +new Date) - initial);
+                }, 17);
+            };
+        })(),
 
         /**
          * Sets up the observation of an object
@@ -212,54 +208,49 @@ Object.observe || (function(O, A, root) {
             var data = observed.get(object);
 
             if (data)
-                data.handlers.set(handler,
-                    setHandler(handler, object, acceptList));
+                setHandler(object, data, handler, acceptList);
             else {
-                observed.set(object, data = {
-                    handlers: createMap(),
-                    properties: isNode(object) ? [] : getKeys(object)
-                });
-                data.handlers.set(handler,
-                    setHandler(handler, object, acceptList));
-                retrieveNotifier(object, data);
-                updateValues(object, data);
-
-                // Let the observation begin!
-                setTimeout(function worker() {
-                    // If this happens, the object has been unobserved
-                    if (!observed.has(object)) return;
-
-                    performPropertyChecks(object, data);
-                    broadcastChangeRecords(data);
-
-                    setTimeout(worker, 17);
-                }, 17);
+                data = createObjectData(object);
+                setHandler(object, data, handler, acceptList);
+                
+                if (observed.size === 1)
+                    // Let the observation begin!
+                    nextFrame(runGlobalLoop);
             }
         },
 
         /**
-         * Updates the stored values of the properties of an observed object
-         * @function updateValues
+         * Creates the initial data for an observed object
+         * @function createObjectData
          * @param {Object} object
-         * @param {ObjectData} data
          */
-        updateValues = function(object, data) {
-            var props = data.properties,
-                values = data.values = [],
-                i = 0;
+        createObjectData = function(object, data) {
+            var props = isNode(object) ? [] : getKeys(object),
+                values = [], descs, i = 0,
+                data = {
+                    handlers: createMap(),
+                    properties: props,
+                    values: values,
+                    notifier: retrieveNotifier(object, data)
+                };
+
             while (i < props.length)
                 values[i] = object[props[i++]];
+
+            observed.set(object, data);
+
+            return data;
         },
 
         /**
          * Performs basic property value change checks on an observed object
          * @function performPropertyChecks
-         * @param {Object} object
          * @param {ObjectData} data
+         * @param {Object} object
          * @param {String} [except]  Doesn't deliver the changes to the
          *                           handlers that accept this type
          */
-        performPropertyChecks = function(object, data, except) {
+        performPropertyChecks = function(data, object, except) {
             if (!data.handlers.size) return;
 
             var props, proplen, keys,
@@ -280,7 +271,7 @@ Object.observe || (function(O, A, root) {
                 value = object[key];
 
                 if (idx === -1) {
-                    addChangeRecord(data, {
+                    addChangeRecord(object, data, {
                         name: key,
                         type: "add",
                         object: object
@@ -293,7 +284,7 @@ Object.observe || (function(O, A, root) {
                     proplen--;
                     if (ovalue === value ? ovalue === 0 && 1/ovalue !== 1/value 
                             : ovalue === ovalue || value === value) {
-                        addChangeRecord(data, {
+                        addChangeRecord(object, data, {
                             name: key,
                             type: "update",
                             object: object,
@@ -307,7 +298,7 @@ Object.observe || (function(O, A, root) {
             // Checks if some property has been deleted
             for (i = props.length; proplen && i--;)
                 if (props[i] !== null) {
-                    addChangeRecord(data, {
+                    addChangeRecord(object, data, {
                         name: props[i],
                         type: "delete",
                         object: object,
@@ -320,34 +311,44 @@ Object.observe || (function(O, A, root) {
         },
 
         /**
-         * Calls the handlers with their relative change records
-         * @function broadcastChangeRecords
-         * @param {ObjectData} data
+         * Sets up the main loop for object observation and change notification
+         * It stops if no object is observed.
+         * @function runGlobalLoop
          */
-        broadcastChangeRecords = function(data) {
-            data.handlers.forEach(function(hdata, handler) {
-                if (hdata.changeRecords.length) {
-                    handler(hdata.changeRecords);
-                    hdata.changeRecords = [];
-                }
-            });
+        runGlobalLoop = function() {
+            if (observed.size) {
+                observed.forEach(performPropertyChecks);
+                handlers.forEach(deliverHandlerRecords);
+                nextFrame(runGlobalLoop);
+            }
+        },
+
+        /**
+         * Deliver the change records relative to a certain handler, and resets
+         * the record list.
+         * @param {HandlerData} hdata
+         * @param {Handler} handler
+         */
+        deliverHandlerRecords = function(hdata, handler) {
+            if (hdata.changeRecords.length) {
+                handler(hdata.changeRecords);
+                hdata.changeRecords = [];
+            }
         },
 
         /**
          * Returns the notifier for an object - whether it's observed or not
+         * @function retrieveNotifier
          * @param {Object} object
          * @param {ObjectData} [data]
          * @returns {Notifier}
          */
         retrieveNotifier = function(object, data) {
-            if (!data)
+            if (arguments.length < 2)
                 data = observed.get(object);
-            var notifier = data && data.notifier;
-
-            if (notifier) return notifier;
 
             /** @type {Notifier} */
-            notifier = {
+            return data && data.notifier || {
                 /**
                  * @method notify
                  * @see http://arv.github.io/ecmascript-object-observe/#notifierprototype._notify
@@ -364,7 +365,7 @@ Object.observe || (function(O, A, root) {
                         for (prop in changeRecord)
                             if (prop !== "object")
                                 recordCopy[prop] = changeRecord[prop];
-                        addChangeRecord(data, recordCopy);
+                        addChangeRecord(object, data, recordCopy);
                     }
                 },
 
@@ -388,7 +389,7 @@ Object.observe || (function(O, A, root) {
                         prop, changeRecord,
                         result = func.call(arguments[2]);
 
-                    data && performPropertyChecks(object, data, changeType);
+                    data && performPropertyChecks(data, object, changeType);
 
                     // If there's no data, the object has been unobserved
                     if (data && result && typeof result === "object") {
@@ -396,60 +397,52 @@ Object.observe || (function(O, A, root) {
                         for (prop in result)
                             if (prop !== "object" && prop !== "type")
                                 changeRecord[prop] = result[prop];
-                        addChangeRecord(data, changeRecord);
+                        addChangeRecord(object, data, changeRecord);
                     }
                 }
             };
-            if (data) data.notifier = notifier;
-
-            return notifier;
         },
 
         /**
          * Register (or redefines) an handler in the collection for a given
          * object and a given type accept list.
          * @function setHandler
-         * @param {Handler} handler
          * @param {Object} object
+         * @param {ObjectData} data
+         * @param {Handler} handler
          * @param {String[]} acceptList
-         * @returns {HandlerData}
          */
-        setHandler = function(handler, object, acceptList) {
-            var data = handlers.get(handler), hdata;
-
-            if (data) {
-                hdata = data.get(object);
-                if (hdata) hdata.acceptList = acceptList;
-                else data.set(object, hdata = {
-                    acceptList: acceptList,
+        setHandler = function(object, data, handler, acceptList) {
+            var hdata = handlers.get(handler), odata;
+            if (!hdata)
+                handlers.set(handler, hdata = {
+                    observed: createMap(),
                     changeRecords: []
                 });
-            } else {
-                data = createMap();
-                data.set(object, hdata = {
-                    acceptList: acceptList,
-                    changeRecords: []
-                });
-                handlers.set(handler, data);
-            }
-
-            return hdata;
+            hdata.observed.set(object, {
+                acceptList: acceptList.slice(),
+                data: data
+            });
+            data.handlers.set(handler, hdata);
         },
 
         /**
          * Adds a change record in a given ObjectData
          * @function addChangeRecord
+         * @param {Object} object
          * @param {ObjectData} data
          * @param {ChangeRecord} changeRecord
          * @param {String} [except]
          */
-        addChangeRecord = function(data, changeRecord, except) {
+        addChangeRecord = function(object, data, changeRecord, except) {
             data.handlers.forEach(function(hdata) {
+                var acceptList = hdata.observed.get(object).acceptList;
                 // If except is defined, Notifier.performChange has been
                 // called, with except as the type.
                 // All the handlers that accepts that type are skipped.
-                if ((except == null || inArray(except, hdata.acceptList) === -1)
-                        && inArray(changeRecord.type, hdata.acceptList) > -1)
+                if ((typeof except !== "string"
+                        || inArray(except, acceptList) === -1)
+                        && inArray(changeRecord.type, acceptList) > -1)
                     hdata.changeRecords.push(changeRecord);
             });
         };
@@ -477,7 +470,7 @@ Object.observe || (function(O, A, root) {
             throw new TypeError("Object.observe cannot deliver to a frozen function object");
 
         if (!isArray(acceptList))
-            acceptList = defaultObjectAccepts;
+            acceptList = defaultAcceptList;
 
         doObserve(object, handler, acceptList);
 
@@ -499,23 +492,23 @@ Object.observe || (function(O, A, root) {
         if (typeof handler !== "function")
             throw new TypeError("Object.unobserve cannot deliver to non-function");
 
-        var data = observed.get(object), cbdata;
+        var hdata = handlers.get(handler), odata;
 
-        if (data && data.handlers.has(handler)) {
-            performPropertyChecks(object, data);
-            broadcastChangeRecords(data);
-
-            cbdata = handlers.get(handler);
+        if (hdata && (odata = hdata.observed.get(object))) {
+            hdata.observed.forEach(function(odata, object) {
+                performPropertyChecks(odata.data, object);
+            });
+            deliverHandlerRecords(hdata, handler);
 
             // In Firefox 13-18, size is a function, but createMap should fall
             // back to the shim for those versions
-            if (cbdata.size === 1 && cbdata.get(object))
+            if (hdata.observed.size === 1 && hdata.observed.has(object))
                 handlers["delete"](handler);
-            else cbdata["delete"](object);
+            else hdata.observed["delete"](object);
 
-            if (data.handlers.size === 1)
+            if (odata.data.handlers.size === 1)
                 observed["delete"](object);
-            else data.handlers["delete"](handler);
+            else odata.data.handlers["delete"](handler);
         }
 
         return object;
@@ -544,18 +537,17 @@ Object.observe || (function(O, A, root) {
      * @param {Handler} handler
      * @throws {TypeError}
      */
-    O.deliverChangeRecords = function deliveryChangeRecords(handler) {
+    O.deliverChangeRecords = function deliverChangeRecords(handler) {
         if (typeof handler !== "function")
             throw new TypeError("Object.deliverChangeRecords cannot deliver to non-function");
 
-        var cbdata = handlers.get(handler);
-        cbdata && cbdata.forEach(function(hdata, object) {
-            performPropertyChecks(object, observed.get(object));
-            if (hdata.changeRecords.length) {
-                handler(hdata.changeRecords);
-                hdata.changeRecords = [];
-            }
-        });
+        var hdata = handlers.get(handler);
+        if (hdata) {
+            hdata.observed.forEach(function(odata, object) {
+                performPropertyChecks(odata.data, object);
+            });
+            deliverHandlerRecords(hdata, handler);
+        }
     };
 
 })(Object, Array, this);
