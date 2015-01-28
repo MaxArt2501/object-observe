@@ -2,7 +2,7 @@
     if (typeof define === "function" && define.amd)
         define(["expect", "object-observe"], tests);
     else if (typeof exports === "object")
-        tests(require("../lib/expect.js"), require("../object-observe.js"));
+        tests(require("../lib/expect.js"), require("../dist/object-observe.js"));
     else tests(root.expect, root.Object.observe);
 })(this, function(expect) {
 "use strict";
@@ -75,6 +75,33 @@ describe("Object.observe", function() {
         setTimeout(function() {
             try {
                 expect(changed).to.be(false);
+                done();
+            } catch (e) { done(e); }
+        }, 30);
+    });
+
+    it("should deliver changes asynchronously", function(done) {
+        function handler(changes) {
+            try {
+                expect(async).to.be(true);
+                expect(tested).to.be(false);
+                expect(changes).to.have.length(1);
+                tested = true;
+            } catch (e) { done(e); }
+        }
+
+        var obj = { foo: 0 },
+            tested = false, async = false;
+        Object.observe(obj, handler);
+
+        obj.foo = 42;
+        async = true;
+
+        Object.unobserve(obj, handler);
+
+        setTimeout(function() {
+            try {
+                expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
         }, 30);
@@ -160,34 +187,6 @@ describe("Object.observe", function() {
         }, 30);
     });
 
-    it("should stop notifying changes when object is unobserved", function(done) {
-        function handler(changes) {
-            try {
-                expect(tested).to.be(false);
-                expect(changes).to.have.length(1);
-                expect(changes[0]).to.eql({ type: "add", name: "foo", object: obj });
-                tested = true;
-            } catch (e) { done(e); }
-        }
-
-        var obj = {},
-            tested = false;
-        Object.observe(obj, handler);
-
-        obj.foo = 6;
-
-        Object.unobserve(obj, handler);
-
-        obj.foo = 28;
-
-        setTimeout(function() {
-            try {
-                expect(tested).to.be(true);
-                done();
-            } catch (e) { done(e); }
-        }, 30);
-    });
-
     it("should deliver changes for multiple objects observed by the same handler", function(done) {
         function handler(changes) {
             try {
@@ -239,6 +238,63 @@ describe("Object.observe", function() {
         obj.bar = 28;
 
         Object.unobserve(obj, handler);
+
+        setTimeout(function() {
+            try {
+                expect(tested).to.be(true);
+                done();
+            } catch (e) { done(e); }
+        }, 30);
+    });
+});
+
+describe("Object.unobserve", function() {
+    it("should prevent further change notifications on observed objects", function(done) {
+        function handler(changes) {
+            try {
+                expect(tested).to.be(false);
+                expect(changes).to.have.length(1);
+                expect(changes[0]).to.eql({ type: "add", name: "foo", object: obj });
+                tested = true;
+            } catch (e) { done(e); }
+        }
+
+        var obj = {},
+            tested = false;
+        Object.observe(obj, handler);
+
+        obj.foo = 6;
+
+        Object.unobserve(obj, handler);
+
+        obj.foo = 28;
+
+        setTimeout(function() {
+            try {
+                expect(tested).to.be(true);
+                done();
+            } catch (e) { done(e); }
+        }, 30);
+    });
+
+    it("should allow asynchronous delivering of pending changes", function(done) {
+        function handler(changes) {
+            try {
+                expect(tested).to.be(false);
+                expect(async).to.be(true);
+                expect(changes).to.have.length(1);
+                tested = true;
+            } catch (e) { done(e); }
+        }
+
+        var obj = {},
+            tested = false, async = false;
+        Object.observe(obj, handler);
+
+        obj.foo = 42;
+
+        Object.unobserve(obj, handler);
+        async = true;
 
         setTimeout(function() {
             try {

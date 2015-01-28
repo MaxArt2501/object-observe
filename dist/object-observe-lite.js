@@ -1,5 +1,5 @@
 /*!
- * Object.observe "lite" polyfill - v0.2.0
+ * Object.observe "lite" polyfill - v0.2.1
  * by Massimo Artizzu (MaxArt2501)
  * 
  * https://github.com/MaxArt2501/object-observe
@@ -498,7 +498,9 @@ Object.observe || (function(O, A, root) {
             hdata.observed.forEach(function(odata, object) {
                 performPropertyChecks(odata.data, object);
             });
-            deliverHandlerRecords(hdata, handler);
+            nextFrame(function() {
+                deliverHandlerRecords(hdata, handler);
+            });
 
             // In Firefox 13-18, size is a function, but createMap should fall
             // back to the shim for those versions

@@ -1,3 +1,12 @@
+## v0.2.1
+
+2015-01-28
+
+* Desynch event delivering on `Object.unobserve`
+* Package restructuring, splitted documentation
+* `npm` module (`object.observe`)
+* `bower` module (`object.observe`)
+
 ## v0.2.0
 
 2015-01-26

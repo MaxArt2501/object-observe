@@ -1,5 +1,5 @@
 /*!
- * Object.observe polyfill - v0.2.0
+ * Object.observe polyfill - v0.2.1
  * by Massimo Artizzu (MaxArt2501)
  * 
  * https://github.com/MaxArt2501/object-observe
@@ -76,8 +76,7 @@ Object.observe || (function(O, A, root) {
          */
         handlers,
 
-        defaultObjectAccepts = [ "add", "update", "delete", "reconfigure", "setPrototype", "preventExtensions" ],
-        defaultArrayAccepts = [ "add", "update", "delete", "splice" ];
+        defaultAcceptList = [ "add", "update", "delete", "reconfigure", "setPrototype", "preventExtensions" ];
 
     // Functions for internal usage
 
@@ -240,32 +239,6 @@ Object.observe || (function(O, A, root) {
                 if (observed.size === 1)
                     // Let the observation begin!
                     nextFrame(runGlobalLoop);
-            }
-        },
-
-        /**
-         * Sets up the main loop for object observation and change notification
-         * It stops if no object is observed.
-         * @function runGlobalLoop
-         */
-        runGlobalLoop = function() {
-            if (observed.size) {
-                observed.forEach(performPropertyChecks);
-                handlers.forEach(deliverHandlerRecords);
-                nextFrame(runGlobalLoop);
-            }
-        },
-
-        /**
-         * Deliver the change records relative to a certain handler, and resets
-         * the record list.
-         * @param {HandlerData} hdata
-         * @param {Handler} handler
-         */
-        deliverHandlerRecords = function(hdata, handler) {
-            if (hdata.changeRecords.length) {
-                handler(hdata.changeRecords);
-                hdata.changeRecords = [];
             }
         },
 
@@ -500,6 +473,33 @@ Object.observe || (function(O, A, root) {
         })(),
 
         /**
+         * Sets up the main loop for object observation and change notification
+         * It stops if no object is observed.
+         * @function runGlobalLoop
+         */
+        runGlobalLoop = function() {
+            if (observed.size) {
+                observed.forEach(performPropertyChecks);
+                handlers.forEach(deliverHandlerRecords);
+                nextFrame(runGlobalLoop);
+            }
+        },
+
+        /**
+         * Deliver the change records relative to a certain handler, and resets
+         * the record list.
+         * @param {HandlerData} hdata
+         * @param {Handler} handler
+         */
+        deliverHandlerRecords = function(hdata, handler) {
+            if (hdata.changeRecords.length) {
+                handler(hdata.changeRecords);
+                hdata.changeRecords = [];
+            }
+        },
+
+
+        /**
          * Returns the notifier for an object - whether it's observed or not
          * @function retrieveNotifier
          * @param {Object} object
@@ -633,7 +633,7 @@ Object.observe || (function(O, A, root) {
             throw new TypeError("Object.observe cannot deliver to a frozen function object");
 
         if (!isArray(acceptList))
-            acceptList = defaultObjectAccepts;
+            acceptList = defaultAcceptList;
 
         doObserve(object, handler, acceptList);
 
@@ -661,7 +661,9 @@ Object.observe || (function(O, A, root) {
             hdata.observed.forEach(function(odata, object) {
                 performPropertyChecks(odata.data, object);
             });
-            deliverHandlerRecords(hdata, handler);
+            nextFrame(function() {
+                deliverHandlerRecords(hdata, handler);
+            });
 
             // In Firefox 13-18, size is a function, but createMap should fall
             // back to the shim for those versions
