@@ -1,7 +1,7 @@
 Object.observe polyfill
 =======================
 
-`Object.observe` polyfill based on [EcmaScript 7 spec](http://arv.github.io/ecmascript-object-observe/). Read the [documentation](doc/index.md) for more detailed informations. Check the [changelog](changelog.md) for see what's changed.
+`Object.observe` polyfill based on [EcmaScript 7 spec](http://arv.github.io/ecmascript-object-observe/). Read the [documentation](doc/index.md) for more detailed informations. Check the [changelog](changelog.md) to see what's changed.
 
 ## Installation
 

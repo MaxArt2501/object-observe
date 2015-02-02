@@ -2,7 +2,7 @@
     if (typeof define === "function" && define.amd)
         define(["expect", "object-observe"], tests);
     else if (typeof exports === "object")
-        tests(require("../lib/expect.js"), require("../dist/object-observe.js"));
+        tests(require("../util/expect.js"), require("../dist/object-observe.js"));
     else tests(root.expect, root.Object.observe);
 })(this, function(expect) {
 "use strict";
