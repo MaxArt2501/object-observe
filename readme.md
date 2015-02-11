@@ -61,21 +61,17 @@ For client side usage, if you only need the "light" version of the polyfill (see
   
   Due to the nature of the shim, there's nothing that can be done about it.
 
-* When a property is created using `Object.defineProperty` and set to not enumerable, it's basically invisible to the polyfill:
+* Environments that don't support [`Object.getOwnPropertyNames`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/getOwnPropertyNames) (most notably, Internet Explorer prior to version 9) can't detect changes to non-enumerable properties:
 
   ```js
-  Object.defineProperty(object, "bar", {
-      value: "hello", enumerable: false, writable: true
-  });
-  // Nothing happens
+  var re = /some regex/g;
+  Object.observe(re, ...);
   
-  object.bar = "hi";
-  // Still nothing...
+  re.lastIndex = 10;
+  // Nothing happens...
   ```
   
-  Also, if the `enumerable` descriptor property is subsequently set to `true`, it will trigger an `"add"` event.
-  
-  There's no way to prevent this limitation.
+  There's no way to prevent this limitation. Developers that need to support those environments should be careful about observing non-plain objects.
 
 * It doesn't work correctly on DOM nodes or other *host* objects. Nodes have a lot of enumerable properties that `Object.observe` should *not* check.
 
@@ -90,7 +86,9 @@ This polyfill has been tested (and is working) in the following environments:
 * Firefox 35 stable and 37 Developer Edition
 * Internet Explorer 11
 * Internet Explorer 5, 7, 8, 9, 10 (as IE11 in emulation mode)
-* node.js 0.10.33-35
+* node.js 0.10.33-36
+
+It also does *not* overwrite the native implentation in Chrome 36+, node.js 0.11.13+ and io.js.
 
 ## License
 

@@ -80,6 +80,143 @@ describe("Object.observe", function() {
         }, 30);
     });
 
+    it("should observe plain objects", function(done) {
+        function handler(changes) {
+            try {
+                expect(tested).to.be(false);
+                expect(changes).to.have.length(1);
+                tested = true;
+            } catch (e) { done(e); }
+        }
+
+        var obj = {}, tested = false;
+        Object.observe(obj, handler);
+
+        obj.foo = 42;
+
+        Object.unobserve(obj, handler);
+
+        setTimeout(function() {
+            try {
+                expect(tested).to.be(true);
+                done();
+            } catch (e) { done(e); }
+        }, 30);
+    });
+
+    it("should observe arrays", function(done) {
+        function handler(changes) {
+            try {
+                expect(tested).to.be(false);
+                expect(changes).to.have.length(2)
+                    .and.to.looselyContain({ type: "add", name: "0", object: array })
+                    .and.to.looselyContain({ type: "update", name: "length", object: array, oldValue: 0 });
+                tested = true;
+            } catch (e) { done(e); }
+        }
+
+        var array = [], tested = false;
+        Object.observe(array, handler);
+
+        array.push(42);
+
+        Object.unobserve(array, handler);
+
+        setTimeout(function() {
+            try {
+                expect(tested).to.be(true);
+                done();
+            } catch (e) { done(e); }
+        }, 30);
+    });
+
+    it("should observe functions", function(done) {
+        function handler(changes) {
+            try {
+                expect(tested).to.be(false);
+                expect(changes).to.have.length(1)
+                expect(changes[0]).to.eql({ type: "add", name: "foo", object: observeMe });
+                tested = true;
+            } catch (e) { done(e); }
+        }
+        function observeMe() {}
+
+        var tested = false;
+        Object.observe(observeMe, handler);
+
+        observeMe.foo = "bar";
+
+        Object.unobserve(observeMe, handler);
+
+        setTimeout(function() {
+            try {
+                expect(tested).to.be(true);
+                done();
+            } catch (e) { done(e); }
+        }, 30);
+    });
+
+    it("should observe all kinds of objects, including instances of user defined classes", function(done) {
+        function handler(changes) {
+            try {
+                expect(tested).to.be(false);
+                expect(changes).to.have.length(3)
+                    .and.to.looselyContain({ type: "update", name: "message", object: error, oldValue: "Message" })
+                    .and.to.looselyContain({ type: "add", name: "TAU", object: Math })
+                    .and.to.looselyContain({ type: "add", name: "foo", object: inst });
+                tested = true;
+            } catch (e) { done(e); }
+        }
+
+        function Class() {};
+
+        var error = new Error("Message"),
+            inst = new Class(),
+            tested = false;
+
+        Object.observe(error, handler);
+        Object.observe(Math, handler);
+        Object.observe(inst, handler);
+
+        error.message = "New message";
+        Math.TAU = Math.PI * 2;
+        inst.foo = "bar";
+
+        Object.unobserve(error, handler);
+        Object.unobserve(Math, handler);
+        Object.unobserve(inst, handler);
+
+        delete Math.TAU;
+
+        setTimeout(function() {
+            try {
+                expect(tested).to.be(true);
+                done();
+            } catch (e) { done(e); }
+        }, 30);
+    });
+
+    it("should not observe any non-object", function() {
+        expect(Object.observe).to.throwError();
+        expect(Object.observe).withArgs(undefined, function() {}).to.throwError();
+        expect(Object.observe).withArgs(null, function() {}).to.throwError();
+        expect(Object.observe).withArgs(1, function() {}).to.throwError();
+        expect(Object.observe).withArgs("foo", function() {}).to.throwError();
+        expect(Object.observe).withArgs(true, function() {}).to.throwError();
+    });
+
+    it("should not observe when not given a handler function", function() {
+        expect(Object.observe).withArgs({}).to.throwError();
+        expect(Object.observe).withArgs({}, "foo").to.throwError();
+        expect(Object.observe).withArgs({}, 42).to.throwError();
+    });
+
+    if (Object.freeze) it("should not observe with a frozen handler function", function() {
+        function handler() {}
+        Object.freeze(handler);
+        expect(Object.observe).withArgs({}, handler).to.throwError();
+    });
+
     it("should deliver changes asynchronously", function(done) {
         function handler(changes) {
             try {
@@ -303,50 +440,97 @@ describe("Object.unobserve", function() {
             } catch (e) { done(e); }
         }, 30);
     });
-});
 
-describe("Object.deliverChangeRecords", function() {
-    it("should deliver changes synchronously", function(done) {
-        function updateHandler(changes) {
+    it("should unobserve one handler at time", function(done) {
+        function handler1(changes) {
             try {
-                expect(updated).to.be(false);
-                expect(added).to.be(true);
+                expect(tested).to.be(false);
                 expect(changes).to.have.length(1);
-                expect(changes[0]).to.eql({ type: "update", name: "foo", object: obj, oldValue: 0 });
-
-                updated = true;
+                expect(changes[0]).to.eql({ type: "add", name: "foo", object: obj });
+                tested = true;
             } catch (e) { done(e); }
         }
-        function addHandler(changes) {
-            try {
-                expect(updated).to.be(false);
-                expect(added).to.be(false);
-                expect(changes).to.have.length(1);
-                expect(changes[0]).to.eql({ type: "add", name: "bar", object: obj });
-
-                added = true;
-            } catch (e) { done(e); }
+        function handler2(changes) {
+            done(new Error("This shouldn't have be called"));
         }
+        var obj = { foo: "bar" },
+            tested = false;
+        Object.observe(obj, handler1, [ "add" ]);
+        Object.observe(obj, handler2, [ "update" ]);
 
-        var obj = { foo: 0 },
-            updated = false, added = false;
-        Object.observe(obj, updateHandler, [ "update" ]);
-        Object.observe(obj, addHandler, [ "add" ]);
+        delete obj.foo;
 
-        obj.foo = 42;
-        obj.bar = "Hi";
-        Object.deliverChangeRecords(addHandler);
+        Object.unobserve(obj, handler2);
 
-        Object.unobserve(obj, updateHandler);
-        Object.unobserve(obj, addHandler);
+        obj.foo = "bar";
+
+        Object.unobserve(obj, handler1);
 
         setTimeout(function() {
             try {
-                expect(updated).to.be(true);
-                expect(added).to.be(true);
+                expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
         }, 30);
+    });
+
+    it("should not throw errors on any non-observed object", function() {
+        Object.unobserve({}, function() {});
+    });
+
+    it("should not throw errors on a not previously used handler", function() {
+        var obj = {},
+            handler = function() {};
+        Object.observe(obj, handler);
+        Object.unobserve(obj, function() {});
+        Object.unobserve(obj, handler);
+    });
+
+    it("should not unobserve any non-object", function() {
+        expect(Object.unobserve).withArgs(null, function() {}).to.throwError();
+        expect(Object.unobserve).withArgs(undefined, function() {}).to.throwError();
+        expect(Object.unobserve).withArgs(42, function() {}).to.throwError();
+        expect(Object.unobserve).withArgs("foo", function() {}).to.throwError();
+        expect(Object.unobserve).withArgs(NaN, function() {}).to.throwError();
+        expect(Object.unobserve).withArgs(true, function() {}).to.throwError();
+    });
+
+    it("should not unobserve when not given a handler function", function() {
+        expect(Object.unobserve).withArgs({}).to.throwError();
+        expect(Object.unobserve).withArgs({}, "foo").to.throwError();
+        expect(Object.unobserve).withArgs({}, 42).to.throwError();
+    });
+});
+
+describe("Object.deliverChangeRecords", function() {
+    it("should not deliver to non-functions", function() {
+        expect(Object.deliverChangeRecords).to.throwError();
+        expect(Object.deliverChangeRecords).withArgs(undefined).to.throwError();
+        expect(Object.deliverChangeRecords).withArgs(null).to.throwError();
+        expect(Object.deliverChangeRecords).withArgs(1).to.throwError();
+        expect(Object.deliverChangeRecords).withArgs("foo").to.throwError();
+        expect(Object.deliverChangeRecords).withArgs(true).to.throwError();
+    });
+
+    it("should deliver changes synchronously", function(done) {
+        function handler(changes) {
+            try {
+                expect(tested).to.be(false);
+                expect(changes).to.have.length(1);
+                expect(changes[0]).to.eql({ type: "add", name: "foo", object: obj });
+                tested = true;
+            } catch (e) { done(e); }
+        }
+
+        var obj = {}, tested = false;
+        Object.observe(obj, handler);
+
+        obj.foo = 42;
+        Object.deliverChangeRecords(handler);
+        expect(tested).to.be(true);
+
+        Object.unobserve(obj, handler);
+        done();
     });
 
     it("should deliver changes to an observer for multiple objects", function(done) {
@@ -382,9 +566,27 @@ describe("Object.deliverChangeRecords", function() {
 });
 
 describe("Object.getNotifier", function() {
-    it("should deliver custom notifications", function(done) {
+    it("should provide a notifier for objects", function() {
+        var obj = { },
+            notifier = Object.getNotifier(obj);
+        expect(notifier).to.be.an("object");
+        expect(notifier.notify).to.be.a("function");
+        expect(notifier.performChange).to.be.a("function");
+    });
+
+    it("should not provide a notifier for non-objects", function() {
+        expect(Object.getNotifier).to.throwError();
+        expect(Object.getNotifier).withArgs(undefined).to.throwError();
+        expect(Object.getNotifier).withArgs(null).to.throwError();
+        expect(Object.getNotifier).withArgs(1).to.throwError();
+        expect(Object.getNotifier).withArgs("foo").to.throwError();
+        expect(Object.getNotifier).withArgs(true).to.throwError();
+    });
+
+    it("should deliver custom notifications asynchronously", function(done) {
         function handler(changes) {
             try {
+                expect(async).to.be(true);
                 expect(tested).to.be(false);
                 expect(changes).to.have.length(1)
                 expect(changes[0]).to.eql({ type: "test", object: obj, message: "Hello" });
@@ -392,17 +594,13 @@ describe("Object.getNotifier", function() {
             } catch (e) { done(e); }
         }
 
-        var obj = { },
-            tested = false,
-            notifier;
+        var obj = {},
+            tested = false, async = false;
+
         Object.observe(obj, handler, [ "test" ]);
 
-        notifier = Object.getNotifier(obj);
-        expect(notifier).to.be.an("object");
-        expect(notifier.notify).to.be.a("function");
-        expect(notifier.performChange).to.be.a("function");
-
-        notifier.notify({ type: "test", message: "Hello" });
+        Object.getNotifier(obj).notify({ type: "test", message: "Hello" });
+        async = true;
 
         Object.unobserve(obj, handler);
 
@@ -464,6 +662,47 @@ describe("Object.getNotifier", function() {
             obj.foo = "bar";
             return { message: "Hello" };
         });
+
+        Object.unobserve(obj, handler);
+
+        setTimeout(function() {
+            try {
+                expect(tested).to.be(true);
+                done();
+            } catch (e) { done(e); }
+        }, 30);
+    });
+
+    it("should perform custom changes synchronously", function() {
+        var obj = {};
+
+        Object.getNotifier(obj).performChange("test", function() {
+            obj.foo = "bar";
+        });
+
+        expect(obj.foo).to.be("bar");
+    });
+
+    it("should deliver notifications asynchronously after performing custom changes", function(done) {
+        function handler(changes) {
+            try {
+                expect(async).to.be(true);
+                expect(tested).to.be(false);
+                expect(changes).to.have.length(1);
+                expect(changes[0]).to.eql({ type: "test", object: obj });
+                tested = true;
+            } catch (e) { done(e); }
+        }
+
+        var obj = { foo: 0 },
+            tested = false, async = false;
+        Object.observe(obj, handler, [ "test" ]);
+
+        Object.getNotifier(obj).performChange("test", function() {
+            obj.foo = "bar";
+            return {};
+        });
+        async = true;
 
         Object.unobserve(obj, handler);
 

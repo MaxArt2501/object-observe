@@ -1,5 +1,5 @@
 /*!
- * Object.observe "lite" polyfill - v0.2.1
+ * Object.observe "lite" polyfill - v0.2.2
  * by Massimo Artizzu (MaxArt2501)
  * 
  * https://github.com/MaxArt2501/object-observe
@@ -164,18 +164,42 @@ Object.observe || (function(O, A, root) {
         } : function() { return new Map(); },
 
         /**
-         * Simple shim for Object.keys is not available
-         * Misses checks on object, don't use as a replacement of Object.keys
-         * @function getKeys
+         * Simple shim for Object.getOwnPropertyNames when is not available
+         * Misses checks on object, don't use as a replacement of Object.keys/getOwnPropertyNames
+         * @function getProps
          * @param {Object} object
          * @returns {String[]}
          */
-        getKeys = O.keys || function(object) {
-            var keys = [], prop;
+        getProps = O.getOwnPropertyNames ? (function() {
+            var func = O.getOwnPropertyNames;
+            try {
+                arguments.callee;
+            } catch (e) {
+                // Strict mode is supported
+
+                // In strict mode, we can't access to "arguments", "caller" and
+                // "callee" properties of functions. Object.getOwnPropertyNames
+                // returns [ "prototype", "length", "name" ] in Firefox; it returns
+                // "caller" and "arguments" too in Chrome and in Internet
+                // Explorer, so those values must be filtered.
+                var avoid = (func(inArray).join(" ") + " ").replace(/prototype |length |name /g, "").slice(0, -1).split(" ");
+                if (avoid.length) func = function(object) {
+                    var props = O.getOwnPropertyNames(object);
+                    if (typeof object === "function")
+                        for (var i = 0, j; i < avoid.length;)
+                            if ((j = inArray(avoid[i++], props)) > -1)
+                                props.splice(j, 1);
+
+                    return props;
+                };
+            }
+            return func;
+        })() : function(object) {
+            var props = [], prop;
             for (prop in object)
                 if (object.hasOwnProperty(prop))
-                    keys.push(prop);
-            return keys;
+                    props.push(prop);
+            return props;
         },
 
         /**
@@ -225,7 +249,7 @@ Object.observe || (function(O, A, root) {
          * @param {Object} object
          */
         createObjectData = function(object, data) {
-            var props = isNode(object) ? [] : getKeys(object),
+            var props = isNode(object) ? [] : getProps(object),
                 values = [], descs, i = 0,
                 data = {
                     handlers: createMap(),
@@ -262,7 +286,7 @@ Object.observe || (function(O, A, root) {
 
             props = data.properties.slice();
             proplen = props.length;
-            keys = getKeys(object);
+            keys = getProps(object);
 
             // Check for value additions/changes
             while (i < keys.length) {
@@ -460,7 +484,7 @@ Object.observe || (function(O, A, root) {
      * @returns {Object}               The observed object
      */
     O.observe = function observe(object, handler, acceptList) {
-        if (object === null || typeof object !== "object")
+        if (object === null || typeof object !== "object" && typeof object !== "function")
             throw new TypeError("Object.observe cannot observe non-object");
 
         if (typeof handler !== "function")
@@ -486,7 +510,7 @@ Object.observe || (function(O, A, root) {
      * @returns {Object}         The given object
      */
     O.unobserve = function unobserve(object, handler) {
-        if (object === null || typeof object !== "object")
+        if (object === null || typeof object !== "object" && typeof object !== "function")
             throw new TypeError("Object.unobserve cannot unobserve non-object");
 
         if (typeof handler !== "function")
@@ -524,7 +548,7 @@ Object.observe || (function(O, A, root) {
      * @returns {Notifier}
      */
     O.getNotifier = function getNotifier(object) {
-        if (object === null || typeof object !== "object")
+        if (object === null || typeof object !== "object" && typeof object !== "function")
             throw new TypeError("Object.getNotifier cannot getNotifier non-object");
 
         if (O.isFrozen && O.isFrozen(object)) return null;

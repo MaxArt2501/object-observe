@@ -104,7 +104,7 @@ Keep into consideration that this shim *hasn't been developed with node.js in mi
 
 The [spec](http://arv.github.io/ecmascript-object-observe/#Array.observe) only states that `Array.observe` is just like `Object.observe` with a fixed accept list of `["add", "update", "delete", "splice"]`, and `Array.unobserve` is equivalent to `Object.unobserve`. That's fine, but where does that `"splice"` event come from?
 
-It's actually triggered by any operation on the array that *may* change the length of the array itself, like `push()` or `splice()`. These operations internally call `notifier.performChange("splice", ...)`, so one solution would be wrapping these methods in `Array.prototype` - or maybe better in the observed array itself - in a `performChange` call. Unfortunately, besides the obvious performance hit, a `"splice"` notification is triggered by this operation too:
+It's actually triggered by any operation on the array that *may* change the length of the array itself, like `push()` or `splice()`. These operations internally call `notifier.performChange("splice", ...)`, so one solution would be wrapping these methods in `Array.prototype` - or maybe better in the observed array itself - in a `performChange` call. Unfortunately, besides the obvious performance hit, this obtrusive intervention doesn't help detecting a `"splice"` change triggered by this operation:
 
 ```js
 var fibonacci = [ 0, 1, 1, 2, 3 ];
@@ -135,6 +135,8 @@ Anyway, this is what wrapping an `Array` method would look like:
     };
 })(Array.prototype.push);
 ```
+
+If you're ok with this, you can add this kind of wrappers to your code, one for every method that triggers a `"splice"` change (namely: `push`, `pop`, `splice`, `shift` and `unshift`) and define `Array.observe`/`unobserve` as described above.
 
 ## Tests
 

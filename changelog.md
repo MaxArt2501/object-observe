@@ -1,3 +1,11 @@
+## v0.2.2
+
+2015-02-11
+
+* Uses `Object.getOwnPropertyNames` instead of `Object.keys` (issue #1)
+* Functions can now be observed
+* More tests
+
 ## v0.2.1
 
 2015-01-28
