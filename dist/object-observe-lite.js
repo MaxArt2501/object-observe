@@ -1,5 +1,5 @@
 /*!
- * Object.observe "lite" polyfill - v0.2.2
+ * Object.observe "lite" polyfill - v0.2.3
  * by Massimo Artizzu (MaxArt2501)
  * 
  * https://github.com/MaxArt2501/object-observe
@@ -77,43 +77,27 @@ Object.observe || (function(O, A, root) {
     // Functions for internal usage
 
         /**
-         * Checks if the argument is a Node object. Uses duck typing if Node is
-         * not defined.
-         * @function isNode
-         * @param {?*} node
-         * @returns {Boolean}
-         */
-    var isNode = root.Node ? function(node) {
-            return node && node instanceof root.Node;
-        } : function(node) {
-            // Duck typing
-            return node && typeof node === "object"
-                    && typeof node.nodeType === "number"
-                    && typeof node.nodeName === "string";
-        },
-
-        /**
          * Checks if the argument is an Array object. Polyfills Array.isArray.
          * @function isArray
          * @param {?*} object
          * @returns {Boolean}
          */
-        isArray = A.isArray || (function(toString) {
+    var isArray = A.isArray || (function(toString) {
             return function (object) { return toString.call(object) === "[object Array]"; };
         })(O.prototype.toString),
 
         /**
          * Returns the index of an item in a collection, or -1 if not found.
-         * Uses Array.prototype.indexOf is available.
+         * Uses the generic Array.indexOf or Array.prototype.indexOf if available.
          * @function inArray
-         * @param {*} pivot           Item to look for
          * @param {Array} array
+         * @param {*} pivot           Item to look for
          * @param {Number} [start=0]  Index to start from
          * @returns {Number}
          */
-        inArray = A.prototype.indexOf ? function(pivot, array, start) {
-            return array.indexOf(pivot, start);
-        } : function(pivot, array, start) {
+        inArray = A.prototype.indexOf ? A.indexOf || function(array, pivot, start) {
+            return A.prototype.indexOf.call(array, pivot, start);
+        } : function(array, pivot, start) {
             for (var i = start || 0; i < array.length; i++)
                 if (array[i] === pivot)
                     return i;
@@ -138,10 +122,10 @@ Object.observe || (function(O, A, root) {
 
             return {
                 size: 0,
-                has: function(key) { return inArray(key, keys) > -1; },
-                get: function(key) { return values[inArray(key, keys)]; },
+                has: function(key) { return inArray(keys, key) > -1; },
+                get: function(key) { return values[inArray(keys, key)]; },
                 set: function(key, value) {
-                    var i = inArray(key, keys);
+                    var i = inArray(keys, key);
                     if (i === -1) {
                         keys.push(key);
                         values.push(value);
@@ -149,7 +133,7 @@ Object.observe || (function(O, A, root) {
                     } else values[i] = value;
                 },
                 "delete": function(key) {
-                    var i = inArray(key, keys);
+                    var i = inArray(keys, key);
                     if (i > -1) {
                         keys.splice(i, 1);
                         values.splice(i, 1);
@@ -187,7 +171,7 @@ Object.observe || (function(O, A, root) {
                     var props = O.getOwnPropertyNames(object);
                     if (typeof object === "function")
                         for (var i = 0, j; i < avoid.length;)
-                            if ((j = inArray(avoid[i++], props)) > -1)
+                            if ((j = inArray(props, avoid[i++])) > -1)
                                 props.splice(j, 1);
 
                     return props;
@@ -195,10 +179,23 @@ Object.observe || (function(O, A, root) {
             }
             return func;
         })() : function(object) {
-            var props = [], prop;
-            for (prop in object)
-                if (object.hasOwnProperty(prop))
-                    props.push(prop);
+            // Poor-mouth version with for...in (IE8-)
+            var props = [], prop, hop;
+            if ("hasOwnProperty" in object) {
+                for (prop in object)
+                    if (object.hasOwnProperty(prop))
+                        props.push(prop);
+            } else {
+                hop = O.hasOwnProperty;
+                for (prop in object)
+                    if (hop.call(object, prop))
+                        props.push(prop);
+            }
+
+            // Inserting a common non-enumerable property of arrays
+            if (isArray(object))
+                props.push("length");
+
             return props;
         },
 
@@ -249,7 +246,7 @@ Object.observe || (function(O, A, root) {
          * @param {Object} object
          */
         createObjectData = function(object, data) {
-            var props = isNode(object) ? [] : getProps(object),
+            var props = getProps(object),
                 values = [], descs, i = 0,
                 data = {
                     handlers: createMap(),
@@ -291,7 +288,7 @@ Object.observe || (function(O, A, root) {
             // Check for value additions/changes
             while (i < keys.length) {
                 key = keys[i++];
-                idx = inArray(key, props);
+                idx = inArray(props, key);
                 value = object[key];
 
                 if (idx === -1) {
@@ -465,8 +462,8 @@ Object.observe || (function(O, A, root) {
                 // called, with except as the type.
                 // All the handlers that accepts that type are skipped.
                 if ((typeof except !== "string"
-                        || inArray(except, acceptList) === -1)
-                        && inArray(changeRecord.type, acceptList) > -1)
+                        || inArray(acceptList, except) === -1)
+                        && inArray(acceptList, changeRecord.type) > -1)
                     hdata.changeRecords.push(changeRecord);
             });
         };
@@ -484,7 +481,7 @@ Object.observe || (function(O, A, root) {
      * @returns {Object}               The observed object
      */
     O.observe = function observe(object, handler, acceptList) {
-        if (object === null || typeof object !== "object" && typeof object !== "function")
+        if (!object || typeof object !== "object" && typeof object !== "function")
             throw new TypeError("Object.observe cannot observe non-object");
 
         if (typeof handler !== "function")
@@ -493,8 +490,10 @@ Object.observe || (function(O, A, root) {
         if (O.isFrozen && O.isFrozen(handler))
             throw new TypeError("Object.observe cannot deliver to a frozen function object");
 
-        if (!isArray(acceptList))
-            acceptList = defaultAcceptList;
+        if (arguments.length > 2) {
+            if (!acceptList || typeof acceptList !== "object")
+                throw new TypeError("Object.observe cannot use non-object accept list");
+        } else acceptList = defaultAcceptList;
 
         doObserve(object, handler, acceptList);
 

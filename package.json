@@ -1,13 +1,13 @@
 {
   "name": "object.observe",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Object.observe polyfill based on ES7 spec",
   "main": "dist/object-observe.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "mocha"
+    "test": "node_modules/.bin/mocha"
   },
   "repository": {
     "type": "git",
@@ -26,5 +26,9 @@
   "bugs": {
     "url": "https://github.com/MaxArt2501/object-observe/issues"
   },
-  "homepage": "https://github.com/MaxArt2501/object-observe"
+  "homepage": "https://github.com/MaxArt2501/object-observe",
+  "devDependencies": {
+    "expect.js": "^0.3.1",
+    "mocha": "^2.1.0"
+  }
 }

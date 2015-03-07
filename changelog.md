@@ -1,3 +1,14 @@
+## v0.2.3
+
+2015-03-06
+
+* Fix on observing arrays in IE8-
+* Removed DOM node detection (just don't observe nodes)
+* Throwing on non-object accept lists
+* Small code changes
+* Unbundled utils, set as dev dependencies
+* Added source maps for the minified versions
+
 ## v0.2.2
 
 2015-02-11

@@ -1,7 +1,6 @@
 .gitignore
 .gitattributes
-dist/object-observe.min.js
-dist/object-observe-lite.min.js
+dist/*.min.*
 bower.json
 
 # Windows image file caches

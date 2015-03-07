@@ -2,7 +2,7 @@
     if (typeof define === "function" && define.amd)
         define(["expect", "object-observe"], tests);
     else if (typeof exports === "object")
-        tests(require("../util/expect.js"), require("../dist/object-observe.js"));
+        tests(require("expect.js"), require("../dist/object-observe.js"));
     else tests(root.expect, root.Object.observe);
 })(this, function(expect) {
 "use strict";
@@ -196,25 +196,39 @@ describe("Object.observe", function() {
         }, 30);
     });
 
-    it("should not observe any non-object", function() {
-        expect(Object.observe).to.throwError();
-        expect(Object.observe).withArgs(undefined, function() {}).to.throwError();
-        expect(Object.observe).withArgs(null, function() {}).to.throwError();
-        expect(Object.observe).withArgs(1, function() {}).to.throwError();
-        expect(Object.observe).withArgs("foo", function() {}).to.throwError();
-        expect(Object.observe).withArgs(true, function() {}).to.throwError();
+    it("should throw when given any non-object", function() {
+        var matcher = /cannot observe non-object/;
+        expect(Object.observe).to.throwError(matcher);
+        expect(Object.observe).withArgs(undefined, function() {}).to.throwError(matcher);
+        expect(Object.observe).withArgs(null, function() {}).to.throwError(matcher);
+        expect(Object.observe).withArgs(1, function() {}).to.throwError(matcher);
+        expect(Object.observe).withArgs("foo", function() {}).to.throwError(matcher);
+        expect(Object.observe).withArgs(true, function() {}).to.throwError(matcher);
     });
 
-    it("should not observe when not given a handler function", function() {
-        expect(Object.observe).withArgs({}).to.throwError();
-        expect(Object.observe).withArgs({}, "foo").to.throwError();
-        expect(Object.observe).withArgs({}, 42).to.throwError();
+    it("should throw when not given a handler function", function() {
+        var matcher = /cannot deliver to non-function/;
+        expect(Object.observe).withArgs({}).to.throwError(matcher);
+        expect(Object.observe).withArgs({}, "foo").to.throwError(matcher);
+        expect(Object.observe).withArgs({}, 42).to.throwError(matcher);
     });
 
-    if (Object.freeze) it("should not observe with a frozen handler function", function() {
+    if (Object.freeze) it("should throw when given a frozen handler function", function() {
         function handler() {}
         Object.freeze(handler);
-        expect(Object.observe).withArgs({}, handler).to.throwError();
+        expect(Object.observe).withArgs({}, handler)
+                .to.throwError(/cannot deliver to a frozen function object/);
+    });
+
+    it("should throw when given a non-object accept list", function() {
+        // Can't test the error message, since Blink doesn't give one
+        // See https://code.google.com/p/chromium/issues/detail?id=464695
+        function matcher(e) {
+            expect(e).to.be.a(TypeError);
+        }
+        expect(Object.observe).withArgs({}, function() {}, null).to.throwError(matcher);
+        expect(Object.observe).withArgs({}, function() {}, "foo").to.throwError(matcher);
+        expect(Object.observe).withArgs({}, function() {}, 42).to.throwError(matcher);
     });
 
     it("should deliver changes asynchronously", function(done) {
@@ -487,29 +501,32 @@ describe("Object.unobserve", function() {
     });
 
     it("should not unobserve any non-object", function() {
-        expect(Object.unobserve).withArgs(null, function() {}).to.throwError();
-        expect(Object.unobserve).withArgs(undefined, function() {}).to.throwError();
-        expect(Object.unobserve).withArgs(42, function() {}).to.throwError();
-        expect(Object.unobserve).withArgs("foo", function() {}).to.throwError();
-        expect(Object.unobserve).withArgs(NaN, function() {}).to.throwError();
-        expect(Object.unobserve).withArgs(true, function() {}).to.throwError();
+        var matcher = /cannot unobserve non-object/;
+        expect(Object.unobserve).withArgs(null, function() {}).to.throwError(matcher);
+        expect(Object.unobserve).withArgs(undefined, function() {}).to.throwError(matcher);
+        expect(Object.unobserve).withArgs(42, function() {}).to.throwError(matcher);
+        expect(Object.unobserve).withArgs("foo", function() {}).to.throwError(matcher);
+        expect(Object.unobserve).withArgs(NaN, function() {}).to.throwError(matcher);
+        expect(Object.unobserve).withArgs(true, function() {}).to.throwError(matcher);
     });
 
     it("should not unobserve when not given a handler function", function() {
-        expect(Object.unobserve).withArgs({}).to.throwError();
-        expect(Object.unobserve).withArgs({}, "foo").to.throwError();
-        expect(Object.unobserve).withArgs({}, 42).to.throwError();
+        var matcher = /cannot deliver to non-function/;
+        expect(Object.unobserve).withArgs({}).to.throwError(matcher);
+        expect(Object.unobserve).withArgs({}, "foo").to.throwError(matcher);
+        expect(Object.unobserve).withArgs({}, 42).to.throwError(matcher);
     });
 });
 
 describe("Object.deliverChangeRecords", function() {
     it("should not deliver to non-functions", function() {
-        expect(Object.deliverChangeRecords).to.throwError();
-        expect(Object.deliverChangeRecords).withArgs(undefined).to.throwError();
-        expect(Object.deliverChangeRecords).withArgs(null).to.throwError();
-        expect(Object.deliverChangeRecords).withArgs(1).to.throwError();
-        expect(Object.deliverChangeRecords).withArgs("foo").to.throwError();
-        expect(Object.deliverChangeRecords).withArgs(true).to.throwError();
+        var matcher = /cannot deliver to non-function/;
+        expect(Object.deliverChangeRecords).to.throwError(matcher);
+        expect(Object.deliverChangeRecords).withArgs(undefined).to.throwError(matcher);
+        expect(Object.deliverChangeRecords).withArgs(null).to.throwError(matcher);
+        expect(Object.deliverChangeRecords).withArgs(1).to.throwError(matcher);
+        expect(Object.deliverChangeRecords).withArgs("foo").to.throwError(matcher);
+        expect(Object.deliverChangeRecords).withArgs(true).to.throwError(matcher);
     });
 
     it("should deliver changes synchronously", function(done) {
@@ -552,16 +569,11 @@ describe("Object.deliverChangeRecords", function() {
 
         obj1.foo = obj2.foo = 42;
         Object.deliverChangeRecords(handler);
+        expect(tested).to.be(true);
 
         Object.unobserve(obj1, handler);
         Object.unobserve(obj2, handler);
-
-        setTimeout(function() {
-            try {
-                expect(tested).to.be(true);
-                done();
-            } catch (e) { done(e); }
-        }, 30);
+        done();
     });
 });
 
@@ -575,12 +587,13 @@ describe("Object.getNotifier", function() {
     });
 
     it("should not provide a notifier for non-objects", function() {
-        expect(Object.getNotifier).to.throwError();
-        expect(Object.getNotifier).withArgs(undefined).to.throwError();
-        expect(Object.getNotifier).withArgs(null).to.throwError();
-        expect(Object.getNotifier).withArgs(1).to.throwError();
-        expect(Object.getNotifier).withArgs("foo").to.throwError();
-        expect(Object.getNotifier).withArgs(true).to.throwError();
+        var matcher = /cannot getNotifier non-object/;
+        expect(Object.getNotifier).to.throwError(matcher);
+        expect(Object.getNotifier).withArgs(undefined).to.throwError(matcher);
+        expect(Object.getNotifier).withArgs(null).to.throwError(matcher);
+        expect(Object.getNotifier).withArgs(1).to.throwError(matcher);
+        expect(Object.getNotifier).withArgs("foo").to.throwError(matcher);
+        expect(Object.getNotifier).withArgs(true).to.throwError(matcher);
     });
 
     it("should deliver custom notifications asynchronously", function(done) {

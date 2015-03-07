@@ -71,9 +71,9 @@ For client side usage, if you only need the "light" version of the polyfill (see
   // Nothing happens...
   ```
   
-  There's no way to prevent this limitation. Developers that need to support those environments should be careful about observing non-plain objects.
+  There's no way to prevent this limitation. Developers that need to support those environments should be careful about observing non-plain objects. A special polyfill is provided for arrays and the `length` property.
 
-* It doesn't work correctly on DOM nodes or other *host* objects. Nodes have a lot of enumerable properties that `Object.observe` should *not* check.
+* Although the polyfill can work on DOM nodes or other *host* objects, the results may be impredictable. Moreover, in older environments like IE8-, observing nodes can be a cumbersome and memory hogging operation: they have a lot of enumerable properties that `Object.observe` should *not* check. Just don't observe nodes: it's not the point of `Object.observe`.
 
 * **Possible memory leaks**: remember to `unobserve` the objects you want to be garbage collected. This can be avoided with native implementations of `Object.observe`, but due to the fact that in this polyfill observed objects are held in internal [maps](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map), they can't be GC'ed until they're unobserved. ([`WeakMap`s](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap) could solve this particular issue, but of course they're not for every environment - a shim for `Map` is used when not supported - and it's also not possible to iterate through their entries.)
 
@@ -83,12 +83,12 @@ For client side usage, if you only need the "light" version of the polyfill (see
 
 This polyfill has been tested (and is working) in the following environments:
 
-* Firefox 35 stable and 37 Developer Edition
+* Firefox 35-36 stable and 37-38 Developer Edition
 * Internet Explorer 11
 * Internet Explorer 5, 7, 8, 9, 10 (as IE11 in emulation mode)
 * node.js 0.10.33-36
 
-It also does *not* overwrite the native implentation in Chrome 36+, node.js 0.11.13+ and io.js.
+It also does *not* overwrite the native implentation in Chrome 36+, Opera 23+, node.js 0.11.13+ and io.js.
 
 ## License
 

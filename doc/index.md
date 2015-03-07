@@ -86,19 +86,18 @@ This method allows to get deliver the notifications currently collected for the 
 
 ## node.js
 
-The polyfill works just fine on Javascript environments like node.js (which doesn't support `Object.observe` as of version 0.10.x). Although the shim handles the thing on its own, the best way to load it is to check if `Object.observe` is actually supported to avoid toload an useless module:
+The polyfill works just fine on Javascript environments like node.js (which doesn't support `Object.observe` up to version 0.10.x). Although the shim handles the thing on its own, the best way to load it is to check if `Object.observe` is actually supported to avoid loading an useless module:
 
 ```js
 if (!Object.observe) require("object.observe");
 ```
 
-Keep into consideration that this shim *hasn't been developed with node.js in mind*, so it doesn't make use of all the node.js goodies that could make this polyfill more efficient. They may be implemented in the future, but for now it works just fine. Node.js will eventually support `Object.observe` in its stable releases (the "beta" channel already does since 0.11.13+).
+Keep into consideration that this shim *hasn't been developed with node.js in mind*, so it doesn't make use of all the node.js goodies that could make this polyfill more efficient. They may be implemented in the future, but for now it works just fine. Node.js supports `Object.observe` since version 0.12.0, and the "beta" channel does since 0.11.13.
 
 ## To do
 
 * Some deeper considerations about whether using `Object.prototype.watch` or not;
-* support for DOM nodes;
-* code tests, documentation, optimization and cleanup.
+* code benchmarks, documentation, optimization and cleanup.
 
 ### `Array.observe`
 
@@ -140,12 +139,13 @@ If you're ok with this, you can add this kind of wrappers to your code, one for 
 
 ## Tests
 
-Tests are performed using [mocha](http://mochajs.org/) and assertions are made using [expect](https://github.com/Automattic/expect.js). For client side testing, these libraries are provided in the [lib](lib/) directory. Opening [index.html](test/index.html) with a browser runs the tests and displays the results.
-
-For server side testing, you can install mocha globally if you havent already:
+Tests are performed using [mocha](http://mochajs.org/) and assertions are made using [expect](https://github.com/Automattic/expect.js), which are set as development dependencies. Assuming the you're located in the project's root directory, if you want to run the tests after installing the package, just do
 
 ```bash
-$ npm install -g mocha
+cd node_modules/object.observe
+npm install
 ```
 
-Then you can just run `mocha` or `npm run test` from the package directory.
+Then you can execute `npm run test` or, if you have mocha installed globally, just `mocha` from the package's root directory.
+
+For client side testing, just open [index.html](../test/index.html) in your browser of choice.
