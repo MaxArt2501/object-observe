@@ -1,5 +1,5 @@
 /*!
- * Object.observe polyfill - v0.2.3
+ * Object.observe polyfill - v0.2.4
  * by Massimo Artizzu (MaxArt2501)
  * 
  * https://github.com/MaxArt2501/object-observe
@@ -233,7 +233,6 @@ Object.observe || (function(O, A, root) {
             var initial = +new Date,
                 last = initial;
             return function(func) {
-                var now = +new Date;
                 return setTimeout(function() {
                     func((last = +new Date) - initial);
                 }, 17);
@@ -596,7 +595,7 @@ Object.observe || (function(O, A, root) {
          * @param {String[]} acceptList
          */
         setHandler = function(object, data, handler, acceptList) {
-            var hdata = handlers.get(handler), odata;
+            var hdata = handlers.get(handler);
             if (!hdata)
                 handlers.set(handler, hdata = {
                     observed: createMap(),
@@ -652,10 +651,10 @@ Object.observe || (function(O, A, root) {
         if (O.isFrozen && O.isFrozen(handler))
             throw new TypeError("Object.observe cannot deliver to a frozen function object");
 
-        if (arguments.length > 2) {
-            if (!acceptList || typeof acceptList !== "object")
-                throw new TypeError("Object.observe cannot use non-object accept list");
-        } else acceptList = defaultAcceptList;
+        if (typeof acceptList === "undefined")
+            acceptList = defaultAcceptList;
+        else if (!acceptList || typeof acceptList !== "object")
+            throw new TypeError("Third argument to Object.observe must be an array of strings.");
 
         doObserve(object, handler, acceptList);
 
