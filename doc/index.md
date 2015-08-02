@@ -94,6 +94,32 @@ if (!Object.observe) require("object.observe");
 
 Keep into consideration that this shim *hasn't been developed with node.js in mind*, so it doesn't make use of all the node.js goodies that could make this polyfill more efficient. They may be implemented in the future, but for now it works just fine. Node.js supports `Object.observe` since version 0.12.0, and the "beta" channel does since 0.11.13.
 
+## Loading on a client
+
+In a server side environment, as in node.js (see above), loading the polyfill as a module shouldn't bring any problems. On a client, on the other hand, it's common to pack all the module dependencies in a single file to minimize client requests. Whether using [Browserify](http://browserify.org/), [webpack](http://webpack.github.io/), R.js ([RequireJS](http://requirejs.org/)' packer) or any other tool for the task, developers should be aware that there's no way to reliably dynamically load the polyfill.
+
+For example, using RequireJS, one would do something like:
+
+```js
+var dependencies = [ "jquery" ];
+if (!Object.observe) dependencies.push("object-observe-lite.min");
+define(dependencies, function($) {
+    ...
+});
+```
+
+But, over the fact that R.js' can't analyze a more complex loading pattern like this one, it simply con't perform a client side test on the server. So, the module is *always* packer in the final script. So, in the end, it's not even necessary to check the definition of `Object.observe`, since the polyfill does it on its own.
+
+It's not even much of a problem, though: the polyfill is currently 2269 bytes minified and gzipped (and 1768 bytes for the "lite" version), so it's probably a bearable load for every client.
+
+If your project does *not* pack the scripts in a single file (which may be fine for small projects or on HTTP2/SPDY connections, or in environments where loading times don't matter), this allows you to load the script only if necessary:
+
+```html
+<script>if (Object.observe) document.write('<script src="object-observe.js"></script>')</script>
+```
+
+Notice the absence of the `async` attribute, as you would probably load it before everything other script that uses `Object.observe`.
+
 ## To do
 
 * Some deeper considerations about whether using `Object.prototype.watch` or not;

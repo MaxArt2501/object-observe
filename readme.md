@@ -27,6 +27,8 @@ That's it. If the environment doesn't already support `Object.observe`, the shim
 
 For client side usage, if you only need the "light" version of the polyfill (see the [documentation](doc/index.md)), replace `object-observe.js` with `object-observe-lite.js`. You can also use the minified versions of the same files (replacing `.js` with `.min.js`). If you want to use the "light" version on the server side, you can either directly reference the desired version with `require` (as in `require("./node_modules/object.observe/dist/object-observe-lite.js");`) or change the `"main"` reference in [`package.json`](package.json).
 
+For more details about loading the polyfill on a client, read the [documentation](doc/index.md#loading-on-a-client).
+
 ## Limitations and caveats
 
 * Because properties are polled, when more than one change is made synchronously to the same property, it won't get caught. This means that this won't notify any event:
@@ -36,11 +38,11 @@ For client side usage, if you only need the "light" version of the polyfill (see
   Object.observe(object, function(changes) {
       console.log("Changes: ", changes);
   });
-  
+
   object.foo = "bar";
   object.foo = null;
   ```
-  
+
   `Object.prototype.watch` could help in this case, but it would be a partial solution.
 
 * Property changes may not be reported in the correct order. The polyfill performs the checks - and issues the notifications - in this order:
@@ -49,16 +51,16 @@ For client side usage, if you only need the "light" version of the polyfill (see
   2. `"delete"` or `"reconfigure"`
   3. `"preventExtensions"`
   4. `"setPrototype"`
-  
+
   This means that the `"add"` change is listed *before* the `"delete"` in the following snippet:
-  
+
   ```js
   var obj = { foo: "bar" };
   Object.observe(foo, ...);
   delete obj.foo;
   obj.bar = "foo";
   ```
-  
+
   Due to the nature of the shim, there's nothing that can be done about it.
 
 * Environments that don't support [`Object.getOwnPropertyNames`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/getOwnPropertyNames) (most notably, Internet Explorer prior to version 9) can't detect changes to non-enumerable properties:
@@ -66,11 +68,11 @@ For client side usage, if you only need the "light" version of the polyfill (see
   ```js
   var re = /some regex/g;
   Object.observe(re, ...);
-  
+
   re.lastIndex = 10;
   // Nothing happens...
   ```
-  
+
   There's no way to prevent this limitation. Developers that need to support those environments should be careful about observing non-plain objects. A special polyfill is provided for arrays and the `length` property.
 
 * Although the polyfill can work on DOM nodes or other *host* objects, the results may be impredictable. Moreover, in older environments like IE8-, observing nodes can be a cumbersome and memory hogging operation: they have a lot of enumerable properties that `Object.observe` should *not* check. Just don't observe nodes: it's not the point of `Object.observe`.
@@ -85,8 +87,9 @@ This polyfill has been tested (and is working) in the following environments:
 
 * Firefox 35-36 stable and 37-38 Developer Edition
 * Internet Explorer 11
+* Microsoft Edge 20
 * Internet Explorer 5, 7, 8, 9, 10 (as IE11 in emulation mode)
-* node.js 0.10.33-36
+* node.js 0.10.33-40
 
 It also does *not* overwrite the native implentation in Chrome 36+, Opera 23+, node.js 0.11.13+ and io.js.
 
