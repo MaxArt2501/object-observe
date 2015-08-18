@@ -7,7 +7,9 @@
     "test": "test"
   },
   "scripts": {
-    "test": "node_modules/.bin/mocha"
+    "test": "node_modules/.bin/mocha",
+    "benchmark": "node benchmark/benchmark.js",
+    "benchmark-lite": "node benchmark/benchmark-lite.js"
   },
   "repository": {
     "type": "git",
@@ -28,6 +30,7 @@
   },
   "homepage": "https://github.com/MaxArt2501/object-observe",
   "devDependencies": {
+    "benchmark": "^1.0.0",
     "expect.js": "^0.3.1",
     "mocha": "^2.1.0"
   }

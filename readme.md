@@ -85,13 +85,20 @@ For more details about loading the polyfill on a client, read the [documentation
 
 This polyfill has been tested (and is working) in the following environments:
 
-* Firefox 35-36 stable and 37-38 Developer Edition
+* Firefox 35-39 stable and 37-41 Developer Edition
 * Internet Explorer 11
 * Microsoft Edge 20
+* Safari desktop 8
+* Safari iOS 8.2
+* Android browser 4.4
 * Internet Explorer 5, 7, 8, 9, 10 (as IE11 in emulation mode)
 * node.js 0.10.33-40
 
 It also does *not* overwrite the native implentation in Chrome 36+, Opera 23+, node.js 0.11.13+ and io.js.
+
+## Performances
+
+Some benchmarks have been done on the dirty checking loop. See [the docs](doc/benchmarks.md) for more details.
 
 ## License
 

@@ -27,6 +27,8 @@ if (typeof Object.observe === "function")
             : "Object.observe has been correctly polyfilled");
 else console.log("Object.observe has NOT been polyfilled");
 
+var timeout = 30;
+
 describe("Object.observe", function() {
     it("should notify 'add', 'update' and 'delete' changes", function(done) {
         function handler(changes) {
@@ -55,7 +57,7 @@ describe("Object.observe", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 
     it("should only notify on actual changes", function(done) {
@@ -77,7 +79,7 @@ describe("Object.observe", function() {
                 expect(changed).to.be(false);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 
     it("should observe plain objects", function(done) {
@@ -101,7 +103,7 @@ describe("Object.observe", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 
     it("should observe arrays", function(done) {
@@ -127,7 +129,7 @@ describe("Object.observe", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 
     it("should observe functions", function(done) {
@@ -153,7 +155,7 @@ describe("Object.observe", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 
     it("should observe all kinds of objects, including instances of user defined classes", function(done) {
@@ -193,7 +195,7 @@ describe("Object.observe", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 
     it("should throw when given any non-object", function() {
@@ -255,7 +257,7 @@ describe("Object.observe", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 
     if (Object.defineProperties) it("should notify 'reconfigure' changes", function(done) {
@@ -281,7 +283,7 @@ describe("Object.observe", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 
     if (Object.seal) it("should notify 'preventExtensions' changes", function(done) {
@@ -307,7 +309,7 @@ describe("Object.observe", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 
     var setProto = Object.setPrototypeOf || "__proto__" in {}
@@ -335,7 +337,7 @@ describe("Object.observe", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 
     it("should deliver changes for multiple objects observed by the same handler", function(done) {
@@ -366,7 +368,7 @@ describe("Object.observe", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 
     it("should not follow changes in the accept list array", function(done) {
@@ -395,7 +397,7 @@ describe("Object.observe", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 });
 
@@ -425,7 +427,7 @@ describe("Object.unobserve", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 
     it("should allow asynchronous delivering of pending changes", function(done) {
@@ -452,7 +454,7 @@ describe("Object.unobserve", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 
     it("should unobserve one handler at time", function(done) {
@@ -485,7 +487,7 @@ describe("Object.unobserve", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 
     it("should not throw errors on any non-observed object", function() {
@@ -622,7 +624,7 @@ describe("Object.getNotifier", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 
     it("should ignore other changes when performing a custom change", function(done) {
@@ -654,7 +656,7 @@ describe("Object.getNotifier", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 
     it("should notify a custom record when performing a custom change returns an object", function(done) {
@@ -683,7 +685,7 @@ describe("Object.getNotifier", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 
     it("should perform custom changes synchronously", function() {
@@ -724,7 +726,7 @@ describe("Object.getNotifier", function() {
                 expect(tested).to.be(true);
                 done();
             } catch (e) { done(e); }
-        }, 30);
+        }, timeout);
     });
 });
 
