@@ -16,8 +16,6 @@ root.generateObject = function(numberOfProperties) {
     return object;
 }
 
-function noop() {}
-
 var padspace = (new Array(81)).join(" ");
 function padL(text, length) {
     return (padspace + text).slice(-length);

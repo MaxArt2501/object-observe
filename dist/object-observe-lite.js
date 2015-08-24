@@ -1,9 +1,9 @@
 /*!
  * Object.observe "lite" polyfill - v0.2.4
  * by Massimo Artizzu (MaxArt2501)
- * 
+ *
  * https://github.com/MaxArt2501/object-observe
- * 
+ *
  * Licensed under the MIT License
  * See LICENSE for details
  */
@@ -58,7 +58,7 @@
  * @returns {ChangeRecord|undefined}
  */
 
-Object.observe || (function(O, A, root) {
+Object.observe || (function(O, A, root, _undefined) {
     "use strict";
 
         /**
@@ -110,7 +110,7 @@ Object.observe || (function(O, A, root) {
          * @function createMap
          * @returns {Map}
          */
-        createMap = typeof root.Map === "undefined" || !Map.prototype.forEach ? function() {
+        createMap = root.Map === _undefined || !Map.prototype.forEach ? function() {
             // Lightweight shim of Map. Lacks clear(), entries(), keys() and
             // values() (the last 3 not supported by IE11, so can't use them),
             // it doesn't handle the constructor's argument (like IE11) and of
@@ -232,7 +232,7 @@ Object.observe || (function(O, A, root) {
             else {
                 data = createObjectData(object);
                 setHandler(object, data, handler, acceptList);
-                
+
                 if (observed.size === 1)
                     // Let the observation begin!
                     nextFrame(runGlobalLoop);
@@ -300,7 +300,7 @@ Object.observe || (function(O, A, root) {
                     ovalue = values[idx];
                     props[idx] = null;
                     proplen--;
-                    if (ovalue === value ? ovalue === 0 && 1/ovalue !== 1/value 
+                    if (ovalue === value ? ovalue === 0 && 1/ovalue !== 1/value
                             : ovalue === ovalue || value === value) {
                         addChangeRecord(object, data, {
                             name: key,
@@ -405,7 +405,8 @@ Object.observe || (function(O, A, root) {
                     // If there's no data, the object has been unobserved
                     var data = observed.get(object),
                         prop, changeRecord,
-                        result = func.call(arguments[2]);
+                        thisObj = arguments[2],
+                        result = thisObj === _undefined ? func() : func.call(thisObj);
 
                     data && performPropertyChecks(data, object, changeType);
 
@@ -487,7 +488,7 @@ Object.observe || (function(O, A, root) {
         if (O.isFrozen && O.isFrozen(handler))
             throw new TypeError("Object.observe cannot deliver to a frozen function object");
 
-        if (typeof acceptList === "undefined")
+        if (acceptList === _undefined)
             acceptList = defaultAcceptList;
         else if (!acceptList || typeof acceptList !== "object")
             throw new TypeError("Third argument to Object.observe must be an array of strings.");

@@ -122,46 +122,11 @@ Notice the absence of the `async` attribute, as you would probably load it befor
 
 ## To do
 
-* Some deeper considerations about whether using `Object.prototype.watch` or not;
-* code benchmarks, documentation, optimization and cleanup.
+* code optimization and cleanup.
 
 ### `Array.observe`
 
-The [spec](http://arv.github.io/ecmascript-object-observe/#Array.observe) only states that `Array.observe` is just like `Object.observe` with a fixed accept list of `["add", "update", "delete", "splice"]`, and `Array.unobserve` is equivalent to `Object.unobserve`. That's fine, but where does that `"splice"` event come from?
-
-It's actually triggered by any operation on the array that *may* change the length of the array itself, like `push()` or `splice()`. These operations internally call `notifier.performChange("splice", ...)`, so one solution would be wrapping these methods in `Array.prototype` - or maybe better in the observed array itself - in a `performChange` call. Unfortunately, besides the obvious performance hit, this obtrusive intervention doesn't help detecting a `"splice"` change triggered by this operation:
-
-```js
-var fibonacci = [ 0, 1, 1, 2, 3 ];
-Array.observe(fibonacci, ...);
-fibonacci[5] = 5;
-```
-
-There's no way to trap this, and forcing developers to only use `Array.prototype` methods leaves me unsure (and it may even be ineffective if the arrays comes from another window frame, for example). So, still have to figure out what to do.
-
-Anyway, this is what wrapping an `Array` method would look like:
-
-```js
-(function(arrayPush) {
-    Array.prototype.push = function push(item) {
-        var args = arguments;
-        Object.getNotifier(this).performChange("splice", function() {
-            var index = this.length;
-            arrayPush.apply(this, args);
-
-            return {
-                index: index,
-                addedCount: args.length,
-                removed: []
-            };
-        }, this);
-
-        return this.length;
-    };
-})(Array.prototype.push);
-```
-
-If you're ok with this, you can add this kind of wrappers to your code, one for every method that triggers a `"splice"` change (namely: `push`, `pop`, `splice`, `shift` and `unshift`) and define `Array.observe`/`unobserve` as described above.
+The [spec](http://arv.github.io/ecmascript-object-observe/#Array.observe) only states that `Array.observe` is just like `Object.observe` with a fixed accept list of `["add", "update", "delete", "splice"]`, and `Array.unobserve` is equivalent to `Object.unobserve`. The `"splice"` event is especially tricky to deal with, but a polyfill for `Array.observe` that wraps the native array methods is available [here](https://github.com/MaxArt2501/array-observe), along with a documentation that explains the problem around the polyfill.
 
 ## Tests
 

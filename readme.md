@@ -3,6 +3,8 @@ Object.observe polyfill
 
 `Object.observe` polyfill based on [EcmaScript 7 spec](http://arv.github.io/ecmascript-object-observe/). Read the [documentation](doc/index.md) for more detailed informations. Check the [changelog](changelog.md) to see what's changed.
 
+For a polyfill for `Array.observe`, you can find something [here](https://github.com/MaxArt2501/array-observe).
+
 ## Installation
 
 This polyfill extends the native `Object` and doesn't have any dependencies, so loading it is pretty straightforward:

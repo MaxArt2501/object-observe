@@ -8,8 +8,8 @@
   },
   "scripts": {
     "test": "node_modules/.bin/mocha",
-    "benchmark": "node benchmark/benchmark.js",
-    "benchmark-lite": "node benchmark/benchmark-lite.js"
+    "benchmark": "node benchmark/benchmarks.js",
+    "benchmark-lite": "node benchmark/benchmarks-lite.js"
   },
   "repository": {
     "type": "git",
