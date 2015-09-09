@@ -7,9 +7,9 @@ Object.observe polyfill
 
 `Object.observe` is a very nice [EcmaScript 7 feature](http://arv.github.io/ecmascript-object-observe/) that has landed on Blink-based browsers (Chrome 36+, Opera 23+) in the [first part of 2014](http://www.html5rocks.com/en/tutorials/es7/observe/). [Node.js](https://nodejs.org/) delivers it too in version 0.11.x, and it's supported by [io.js](https://iojs.org/) since its first public release.
 
-In short, it's one of the things web developers wish they had 10-15 years ago: it notifies the application of any changes made to an object, like adding, deleting or updating a property, changing its descriptor and so on. It even supports custom events. Sweet!
+In short, it's one of the things web developers wish they had 10-15 years ago: it notifies the application of any change made to an object, like adding, deleting or updating a property, changing its descriptor and so on. It even supports custom events. Sweet!
 
-The problem is that most browsers still doesn't support `Object.observe`. While technically it's *impossible* to perfectly replicate the feature's behaviour, something useful can be done keeping the same API.
+The problem is that most browsers still don't support `Object.observe`. While technically it's *impossible* to perfectly replicate the feature's behaviour, something useful can be done keeping the same API.
 
 After giving a look at other polyfills, like [jdarling's](https://github.com/jdarling/Object.observe) and [joelgriffith's](https://github.com/joelgriffith/object-observe-es5), and taking inspiration from them, I decided to write one myself trying to be more adherent to the specifications.
 
