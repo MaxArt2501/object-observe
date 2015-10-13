@@ -247,6 +247,7 @@ Object.observe || (function(O, A, root, _undefined) {
          * @param {String[]} [acceptList]
          */
         doObserve = function(object, handler, acceptList) {
+            runGlobalLoop();
 
             var data = observed.get(object);
 
