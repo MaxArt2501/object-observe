@@ -1,5 +1,5 @@
 /*!
- * Object.observe "lite" polyfill - v0.2.5
+ * Object.observe "lite" polyfill - v0.2.6
  * by Massimo Artizzu (MaxArt2501)
  *
  * https://github.com/MaxArt2501/object-observe

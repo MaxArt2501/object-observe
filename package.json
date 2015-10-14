@@ -1,6 +1,6 @@
 {
   "name": "object.observe",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Object.observe polyfill based on ES7 spec",
   "main": "dist/object-observe.js",
   "directories": {
