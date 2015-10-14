@@ -1,5 +1,5 @@
 /*!
- * Object.observe polyfill - v0.2.4
+ * Object.observe polyfill - v0.2.6
  * by Massimo Artizzu (MaxArt2501)
  *
  * https://github.com/MaxArt2501/object-observe
@@ -246,13 +246,13 @@ Object.observe || (function(O, A, root, _undefined) {
          * @param {Handler} handler
          * @param {String[]} [acceptList]
          */
-        doObserve = function(object, handler, acceptList) {
-
+        doObserve = function (object, handler, acceptList) {
             var data = observed.get(object);
 
-            if (data)
+            if (data) {
+                performPropertyChecks(data, object); // <- fixes #16
                 setHandler(object, data, handler, acceptList);
-            else {
+            } else {
                 data = createObjectData(object);
                 setHandler(object, data, handler, acceptList);
 

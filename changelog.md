@@ -1,3 +1,13 @@
+## v0.2.6
+
+* Apply fix from MaxArt2501 at https://github.com/MaxArt2501/object-observe/pull/17 for #16
+
+## v0.2.5
+
+2015-10-13
+
+* Fixes issue #16
+
 ## v0.2.4
 
 2015-03-31

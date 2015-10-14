@@ -399,6 +399,25 @@ describe("Object.observe", function() {
             } catch (e) { done(e); }
         }, timeout);
     });
+
+    it("should not notify about the changes made before observe called (should be run in IE or Firefox)", function (done) {
+        var obj = {};
+        var callback1 = function () {
+        };
+        var callback2 = function () {
+            done(new Error("this callback should not be called as it was attached after the changes were made "));
+        };
+
+        obj.value1 = "value 1";
+        Object.observe(obj, callback1);
+
+        obj.value2 = "value 2";
+        Object.observe(obj, callback2);
+
+        setTimeout(function () {
+            done();
+        }, 10);
+    });
 });
 
 describe("Object.unobserve", function() {
