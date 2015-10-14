@@ -246,14 +246,13 @@ Object.observe || (function(O, A, root, _undefined) {
          * @param {Handler} handler
          * @param {String[]} [acceptList]
          */
-        doObserve = function(object, handler, acceptList) {
-            runGlobalLoop();
-
+        doObserve = function (object, handler, acceptList) {
             var data = observed.get(object);
 
-            if (data)
+            if (data) {
+                performPropertyChecks(data, object); // <- fixes #16
                 setHandler(object, data, handler, acceptList);
-            else {
+            } else {
                 data = createObjectData(object);
                 setHandler(object, data, handler, acceptList);
 
