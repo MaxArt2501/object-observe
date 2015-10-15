@@ -399,6 +399,41 @@ describe("Object.observe", function() {
             } catch (e) { done(e); }
         }, timeout);
     });
+
+    it("should deliver changes only after the handler has been registered", function(done) {
+        function handler1(changes) {
+            try {
+                expect(changes).to.have.length(1);
+                expect(async).to.be(true);
+                tested = true;
+            } catch (e) { done(e); }
+        }
+        function handler2() {
+            done(new Error("expected no changes"));
+        }
+
+        var obj = {},
+            async = false,
+            tested = false;
+
+        obj.foo = 42;
+        Object.observe(obj, handler1);
+
+        obj.bar = "Hello!";
+        Object.observe(obj, handler2);
+
+        async = true;
+
+        Object.unobserve(obj, handler1);
+        Object.unobserve(obj, handler2);
+
+        setTimeout(function() {
+            try {
+                expect(tested).to.be(true);
+                done();
+            } catch (e) { done(e); }
+        }, timeout);
+    });
 });
 
 describe("Object.unobserve", function() {

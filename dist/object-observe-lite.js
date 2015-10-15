@@ -224,12 +224,12 @@ Object.observe || (function(O, A, root, _undefined) {
          * @param {String[]} [acceptList]
          */
         doObserve = function(object, handler, acceptList) {
-
             var data = observed.get(object);
 
-            if (data)
+            if (data) {
+                performPropertyChecks(data, object);
                 setHandler(object, data, handler, acceptList);
-            else {
+            } else {
                 data = createObjectData(object);
                 setHandler(object, data, handler, acceptList);
 
