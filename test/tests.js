@@ -612,6 +612,26 @@ describe("Object.deliverChangeRecords", function() {
         Object.unobserve(obj2, handler);
         done();
     });
+
+    it("should not deliver changes already being under delivery", function (done) {
+        function handler() {
+            try {
+                expect(tested).to.be(false);
+                tested = true;
+
+                Object.deliverChangeRecords(handler);
+            } catch (e) { done(e); }
+        };
+
+        var obj = { value: 1 },
+            tested = false;
+        Object.observe(obj, handler);
+
+        obj.value++;
+        Object.deliverChangeRecords(handler);
+
+        done();
+    });
 });
 
 describe("Object.getNotifier", function() {

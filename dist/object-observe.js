@@ -512,9 +512,10 @@ Object.observe || (function(O, A, root, _undefined) {
          * @param {Handler} handler
          */
         deliverHandlerRecords = function(hdata, handler) {
-            if (hdata.changeRecords.length) {
-                handler(hdata.changeRecords);
+            var records = hdata.changeRecords;
+            if (records.length) {
                 hdata.changeRecords = [];
+                handler(records);
             }
         },
 
