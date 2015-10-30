@@ -17,7 +17,7 @@ After giving a look at other polyfills, like [jdarling's](https://github.com/jda
 
 Your intuition may have led you to think that this polyfill is based on polling the properties of the observed object. In other words, "dirty checking". If that's the case, well, you're correct: we have no better tools at the moment.
 
-Even Gecko's [`Object.prototype.watch`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/watch) is probably not worth the effort. First of all, it just checks for updates to the value of a *single* property (or recreating the property after it's been deleted), which may save some work, but not much really. Furthermore, you can't watch a property with two different handlers, meaning that performing `watch` on the same property *replaces* the previous handler.
+Even Gecko's [`Object.prototype.watch`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/watch) is probably not worth the effort. First of all, it just checks for updates to the value of a *single* property (or recreating the property after it's been deleted), which may save some work, but not much really. Furthermore, you can't watch a property with two different handlers, meaning that performing `watch` on the same property *replaces* the previous handler. It's just a proprietary feature for debugging purposes.
 
 Regarding value changes, changing the property descriptors with `Object.defineProperty` has similar issues. Moreover, it makes everything slower - if not *much* slower - when it comes to accessing the property. It would also prevent a correct handling of the `"reconfigure"` event.
 
@@ -61,7 +61,7 @@ The checks are performed using `requestAnimationFrame`, with a fallback to `setT
 
 The polyfill comes in two flavours: a "full" and a "light" version. The "full" version aims to be 100% spec compliant, and fully supports all the native observable events. The "light" version, instead, only supports `"add"`, `"update"` and `"delete"`, and ditches most of the checks about properties, but it could be used in most cases where data binding is based on plain objects.
 
-If you don't need to check for `"reconfigure"`, `"preventExtensions"` and `"setPrototype"` events, and you are confident that your observed objects don't have to do with accessor properties or changes in their descriptors, then go for the light version, which should perform reasonably better on older and/old slower environments.
+If you don't need to check for `"reconfigure"`, `"preventExtensions"` and `"setPrototype"` events, and you are confident that your observed objects don't have to do with accessor properties or changes in their descriptors, then go for the light version, which [performs reasonably better](./benchmarks.md).
 
 
 ## What's provided
@@ -82,17 +82,17 @@ Both the `notify` and `performChange` methods are supported.
 
 ### `Object.deliverChangeRecords`
 
-This method allows to get deliver the notifications currently collected for the given handler *synchronously*. Yep, this is supposed to work too.
+This method allows to deliver the notifications currently collected for the given handler *synchronously*. Yep, this is supposed to work too.
 
 ## node.js
 
-The polyfill works just fine on Javascript environments like node.js (which doesn't support `Object.observe` up to version 0.10.x). Although the shim handles the thing on its own, the best way to load it is to check if `Object.observe` is actually supported to avoid loading an useless module:
+The polyfill works just fine on Javascript environments like node.js. Although the shim handles the thing on its own, the best way to load it is to check if `Object.observe` is actually supported to avoid loading an useless module:
 
 ```js
 if (!Object.observe) require("object.observe");
 ```
 
-Keep into consideration that this shim *hasn't been developed with node.js in mind*, so it doesn't make use of all the node.js goodies that could make this polyfill more efficient. They may be implemented in the future, but for now it works just fine. Node.js supports `Object.observe` since version 0.12.0, and the "beta" channel does since 0.11.13.
+Keep in consideration that this shim *hasn't been developed with node.js in mind*, so it doesn't make use of all the node.js goodies that could make this polyfill more efficient. They may be implemented in the future, but for now it works just fine. Node.js supports `Object.observe` since version 0.12.0, and the "beta" channel does since 0.11.13.
 
 ## Loading on a client
 
@@ -108,21 +108,27 @@ define(dependencies, function($) {
 });
 ```
 
-But, over the fact that R.js' can't analyze a more complex loading pattern like this one, it simply con't perform a client side test on the server. So, the module is *always* packer in the final script. So, in the end, it's not even necessary to check the definition of `Object.observe`, since the polyfill does it on its own.
+But, over the fact that R.js can't analyze a more complex loading pattern like this one, it simply con't perform a client side test on the server. So, the module is *always* packed in the final script. In the end, it's not even necessary to check the definition of `Object.observe`, since the polyfill does it on its own.
 
-It's not even much of a problem, though: the polyfill is currently 2269 bytes minified and gzipped (and 1768 bytes for the "lite" version), so it's probably a bearable load for every client.
+It's not even much of a problem, though: the polyfill is currently 2301 bytes minified and gzipped (and 1800 bytes for the "lite" version), so it's probably a bearable load for every client.
 
-If your project does *not* pack the scripts in a single file (which may be fine for small projects or on HTTP2/SPDY connections, or in environments where loading times don't matter), this allows you to load the script only if necessary:
+If your project does *not* pack the scripts in a single file (which may be fine for small projects or on HTTP2/SPDY connections, or in environments where request overheads aren't a problem), something like this allows you to load the script only if necessary:
 
 ```html
-<script>if (Object.observe) document.write('<script src="object-observe.js"></script>')</script>
+<script>if (!Object.observe) document.write('<script src="object-observe.min.js"></script>')</script>
 ```
 
-Notice the absence of the `async` attribute, as you would probably load it before everything other script that uses `Object.observe`.
+Notice the absence of the `async` attribute, as you would probably load it before every other script that uses `Object.observe`.
+
+## Why this monolithic source code?
+
+Oh, I would *love* to write a source code split into modules, using ES6 syntax, giving everything to [Babelify](https://github.com/babel/babelify) or something like that and enjoy a much cleaner code. Unfortunately, packers inject a lot of support code in the final result, sometimes increasing the file size significantly, while I want to keep it as small as possible.
+
+On the other hand, with less than 500 non-empty and non-comment lines for the "full" version, and less than 300 for the "light" version, everything is still manageable in one file.
 
 ## To do
 
-* code optimization and cleanup.
+* prepare everything for when `Object.observe`'s [third argument](http://arv.github.io/ecmascript-object-observe/#Object.observe) will be an object and not just an array
 
 ### `Array.observe`
 
