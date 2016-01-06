@@ -1,9 +1,19 @@
 Object.observe polyfill
 =======================
 
-`Object.observe` polyfill based on [EcmaScript 7 spec](http://arv.github.io/ecmascript-object-observe/). Read the [documentation](doc/index.md) for more detailed informations. Check the [changelog](changelog.md) to see what's changed.
+`Object.observe` polyfill based on ~~[EcmaScript 7 spec](http://arv.github.io/ecmascript-object-observe/)~~. Read the [documentation](doc/index.md) for more detailed informations. Check the [changelog](changelog.md) to see what's changed.
 
 For a polyfill for `Array.observe`, you can find something [here](https://github.com/MaxArt2501/array-observe).
+
+## `Object.observe` isn't a proposed spec anymore
+
+You might have read this around, but back in November `Object.observe` proposal was withdrawn from TC39. This also means that `Object.observe` will be pulled from Chrome and other V8-based environments, and that would imply that *developers shouldn't rely on it anymore*. Web development evolved in the direction of functional programming and immutable objects, so that's where we all should look at.
+
+You can find the discussion [here](https://esdiscuss.org/topic/an-update-on-object-observe). V8's development on `Proxy` objects is still going, though, as the proposal has been finalized for ES2015.
+
+Regarding this polyfill, its development can be considered concluded. There is still a minor bug that allows to observe the global object, but I don't think I'll address it. In the meanwhile, this package (along with my polyfill for [`Array.observe`](https://github.com/MaxArt2501/array-observe)) is now marked as deprecated on the `npm` registry.
+
+For the future, I might extract the observing engine from this polyfill and serve it as project on its own, without the legacy of `Object.observe` interface. That could still be useful, especially for debugging purposes.
 
 ## Installation
 
